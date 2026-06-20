@@ -6,11 +6,10 @@ The 2-node cluster's corosync ring was built on the flat network (`ring0_addr` =
 `192.168.8.x` per node, QDevice at `192.168.8.230`). The goal is to move cluster
 communication onto **MGMT VLAN 10** so the flat network can eventually be retired.
 
-This is done in two stages. **Stage 1 (this runbook, done)**: add VLAN 10 as a *second*
-corosync link (`ring1`) alongside the flat `ring0` — additive and redundant, so it can't split
-the cluster. **Stage 2 (future)**: once `ring1` has proven stable, promote VLAN 10 to primary,
-remove the flat `ring0`, and move the QDevice off `192.168.8.230` — after which the flat
-network can be deprecated.
+This was done in two stages. **Stage 1**: add VLAN 10 as a *second* corosync link (`ring1`)
+alongside the flat `ring0` — additive and redundant, so it can't split the cluster.
+**Stage 2**: cut over to a single VLAN 10 link, remove the flat `ring0`, and move the QDevice
+to `10.0.10.4`. Both stages are complete; the cluster now has no flat-net dependency.
 
 Prerequisite: all nodes dual-homed on VLAN 10 and able to reach each other on it (see the
 per-node management-VLAN runbooks).
@@ -103,13 +102,26 @@ cp /root/corosync.conf.local.bak /etc/corosync/corosync.conf
 systemctl restart corosync
 ```
 
-## Stage 2 (future — not yet done)
+## Stage 2 (done) — cut over to a single VLAN 10 link
 
-- Promote VLAN 10: set `knet_link_priority` so `ring1` is preferred (or remove `ring0`).
-- Remove the flat `ring0_addr` lines and the `linknumber: 0` interface; bump `config_version`.
-- Move the QDevice: `pvecm qdevice remove` then `pvecm qdevice setup 10.0.10.4` (needs quorum;
-  do it while healthy). Requires the Pi reachable on VLAN 10, which it is.
-- Then the flat network (VLAN 1) has no cluster dependency left and can be deprecated.
+What was actually done:
+
+1. Rewrote `corosync.conf` so `ring0_addr` = the VLAN 10 IPs (`10.0.10.2`/`10.0.10.3`),
+   removed both `ring1_addr` lines and the `linknumber: 1` interface, bumped `config_version`
+   4 → 5. (Collapsed to a single link, VLAN 10 as `ring0`.)
+2. `corosync-cfgtool -R` **failed** with `CS_ERR_INVALID_PARAM` — changing a link's bind
+   address / removing a link is not a live-reloadable operation.
+3. Restarted corosync on **both nodes back-to-back** (`ssh teejhost1 systemctl restart
+   corosync && systemctl restart corosync`). A node on the new config and one on the old can't
+   talk (mismatched link addresses), so they only reconverge once both restart. Brief quorum
+   blip, VMs unaffected.
+4. Moved the QDevice: `pvecm qdevice remove` then `pvecm qdevice setup 10.0.10.4 -f` (run on a
+   node — the Pi has no `pvecm`; OMV uses an admin user, not root, for the SSH step).
+
+After this the cluster runs entirely on VLAN 10 with the QDevice at `10.0.10.4` — no flat-net
+dependency. The flat IPs were then removed from the hosts (see the per-host runbooks), and the
+CIFS storage repointed to `10.0.10.4`. Remaining before VLAN 1 can be fully retired: migrate
+the PBS VM (`192.168.8.233`) and scrub VLAN 1 off the switch.
 
 ## Lessons learned
 

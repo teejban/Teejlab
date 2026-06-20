@@ -143,10 +143,13 @@ An `RFC1918` alias is already defined to support these future rules.
 - [x] teejhost1 management dual-homed onto MGMT VLAN 10 (`10.0.10.2`, tagged `vmbr0.10`)
 - [x] teejlab-pi-nas management dual-homed onto MGMT VLAN 10 (`10.0.10.4`, tagged `eth0.10` via OMV)
 - [x] teejhost2 management dual-homed onto MGMT VLAN 10 (`10.0.10.3`, tagged `vmbr0.10`)
-- [x] Corosync second link (`ring1`) on VLAN 10 added and verified — redundant over flat + VLAN 10, both links connected
-- [ ] Corosync cutover: promote VLAN 10 to primary, remove flat `ring0`, move QDevice off `192.168.8.230`
-- [ ] Legacy flat network (VLAN 1) deprecated (blocked on the corosync cutover)
-- [ ] Remaining VLAN access ports configured on switch; switch management onto VLAN 10 (firmware-permitting)
+- [x] Corosync second link (`ring1`) on VLAN 10 added and verified — redundant over flat + VLAN 10
+- [x] Corosync cutover: single link on VLAN 10 (`ring0` = `10.0.10.x`), flat ring removed (needed a rolling corosync restart — link address change isn't live-reloadable)
+- [x] QDevice moved to `10.0.10.4` (VLAN 10)
+- [x] Flat IPs removed from all hosts — teejhost1, teejhost2, pi-nas now VLAN-10-only; default gateways on the `.10` interfaces
+- [x] CIFS storage (`teejlab-share`) repointed from `192.168.8.230` to `10.0.10.4`
+- [ ] PBS VM (`192.168.8.233`) migrated to VLAN 10 + `teejlab-pbs` storage repointed (last flat-net dependency)
+- [ ] Legacy flat network (VLAN 1) deprecated on the switch (blocked on the PBS move; Easy Smart switch management also lives on VLAN 1)
 - [x] Tailscale deployed on OPNsense for remote/cross-VLAN access (subnet router for `10.0.10.0/24`)
 - [ ] Firewall hardening pass (after VLAN migration completes)
 

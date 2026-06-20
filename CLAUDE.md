@@ -18,13 +18,13 @@ Project handle: `teejlab` (also the owned domain `teejlab.dev`).
 
 ### Hypervisor cluster
 
-- **teejhost1** — Lenovo ThinkCentre M920q (mini PC). 1 NIC (`eno1`). Proxmox node; also hosts the PBS VM (VMID 101). Dual-homed: `192.168.8.119` (flat) + `10.0.10.2` (MGMT VLAN 10, tagged `vmbr0.10`).
-- **teejhost2** — Lenovo ThinkCentre M920q (mini PC). 4 NICs (added 4-port card; `enp2s0f0` LAN trunk → vmbr0, `enp2s0f1` WAN → vmbr1, `enp2s0f2`/`enp2s0f3`/`eno1` spare). Proxmox node. Hosts the OPNsense VM (VMID 100). Dual-homed: `192.168.8.138` (flat) + `10.0.10.3` (MGMT VLAN 10, tagged `vmbr0.10`).
+- **teejhost1** — Lenovo ThinkCentre M920q (mini PC). 1 NIC (`eno1`). Proxmox node; also hosts the PBS VM (VMID 101). IP `10.0.10.2` (MGMT VLAN 10, tagged `vmbr0.10`); flat IP removed.
+- **teejhost2** — Lenovo ThinkCentre M920q (mini PC). 4 NICs (added 4-port card; `enp2s0f0` LAN trunk → vmbr0, `enp2s0f1` WAN → vmbr1, `enp2s0f2`/`enp2s0f3`/`eno1` spare). Proxmox node. Hosts the OPNsense VM (VMID 100). IP `10.0.10.3` (MGMT VLAN 10, tagged `vmbr0.10`); flat IP removed.
 - Cluster totals: 12 CPUs, ~94 GiB RAM, ~888 GiB storage.
 
 ### Storage
 
-- **teejlab-pi-nas** — Raspberry Pi 5 (8GB), SATA HAT with 4 SSDs, ZFS pool `teejlab-tank` (~1.32 TiB). Runs OpenMediaVault 7. Doubles as cluster QDevice and SMB target for Proxmox + other clients. NIC `eth0`. Dual-homed: `192.168.8.230` (flat) + `10.0.10.4` (MGMT VLAN 10, tagged `eth0.10`).
+- **teejlab-pi-nas** — Raspberry Pi 5 (8GB), SATA HAT with 4 SSDs, ZFS pool `teejlab-tank` (~1.32 TiB). Runs OpenMediaVault 7. Doubles as cluster QDevice and SMB target for Proxmox + other clients. NIC `eth0`. IP `10.0.10.4` (MGMT VLAN 10, tagged `eth0.10`); flat IP removed.
 
 ### Networking
 
@@ -90,9 +90,10 @@ Triple NAT (lab → OPNsense → travel router → landlord). Inbound for public
 - OPNsense routing, DHCP per VLAN, basic firewall
 - Switch with 802.1Q VLANs configured
 - End-to-end DHCP validated on LAB VLAN
-- All three nodes (teejhost1, teejhost2, teejlab-pi-nas) dual-homed onto MGMT VLAN 10
-- Corosync running redundantly over two links: `ring0` flat + `ring1` VLAN 10 (`10.0.10.2`/`10.0.10.3`). Flat net not yet retired — that needs promoting VLAN 10 to primary, removing `ring0`, and moving the QDevice off `192.168.8.230`.
+- All hosts migrated to MGMT VLAN 10 with flat IPs removed: teejhost1 (`10.0.10.2`), teejhost2 (`10.0.10.3`), teejlab-pi-nas (`10.0.10.4`)
+- Corosync on a single VLAN 10 link (flat `ring0` removed); QDevice on `10.0.10.4`; CIFS storage repointed to `10.0.10.4`
 - Tailscale on OPNsense as a subnet router advertising `10.0.10.0/24` — remote web + SSH access to the lab from anywhere, no port forwarding. Decouples management from the flat net.
+- Last flat-net dependency: the PBS VM at `192.168.8.233` (its migration + `teejlab-pbs` storage repoint is the next task). The switch's own management IP is also still on VLAN 1.
 
 ### Planned / in progress (DevOps focus)
 - IaC: Terraform + `bpg/proxmox` provider for VM provisioning
@@ -165,6 +166,12 @@ OMV stores config in its own database and regenerates the live `systemd-networkd
 
 ### Migrate corosync to a new network by adding a link, not swapping
 To move the cluster onto a new network without risking a split, **add** the new address as a second corosync link (`ring1_addr` per node + a second `interface { linknumber: 1 }` in `totem`) rather than changing `ring0`. It's additive: if the new link is wrong it just shows down and the cluster stays quorate on `ring0`. Edit `/etc/pve/corosync.conf` on one node (pmxcfs propagates it), **increment `config_version`** (ignored otherwise), and corosync reloads on the change. Verify with `corosync-cfgtool -s` — both LINK ID 0 and LINK ID 1 must show `connected`; a configured-but-down link still leaves `pvecm status` looking quorate, so it hides the failure. Prerequisite: every node must reach every other on the new subnet first. Recovery if pmxcfs goes read-only: restore the local `/etc/corosync/corosync.conf` and `systemctl restart corosync`. Promoting the new link to primary and removing the old one is a separate later step.
+
+### Corosync link-address changes need a restart, not a reload
+Cutting corosync over to a new network (changing `ring0`'s bind address and dropping a link) can't be applied with `corosync-cfgtool -R` — it fails with `CS_ERR_INVALID_PARAM`. It requires restarting corosync. And because a node on the old config and a node on the new config can't talk (mismatched link addresses), you can't do a "rolling, verify between" restart — restart **both** nodes back-to-back (`ssh teejhost1 systemctl restart corosync && systemctl restart corosync`); they only reconverge once both are on the new config. Brief quorum blip, VMs keep running, comes back in seconds. The QDevice can be moved separately afterward with `pvecm qdevice remove` / `pvecm qdevice setup <new-ip>` (run on a *node*, not the qnetd host — the Pi has no `pvecm`).
+
+### Removing a host's flat IP: connect over the VLAN first, and `at` may be missing
+When pulling a host's flat IP (set `vmbr0`/`eth0` to manual, move the default gateway to the `.10` sub-interface), connect to the host over its **VLAN 10 IP** first — if you're SSH'd in over the flat IP you're about to remove, you drop yourself (this bit teejhost2). The dead-man's-switch rollback needs the `at` package, which isn't installed on Proxmox by default (`apt install at`) — without it the scheduled `at` command silently no-ops, so don't rely on it unless you've confirmed it's there. On OMV the equivalent change is done in the UI (eth0 IPv4 → Disabled, gateway onto `eth0.10`), accessed over the VLAN IP. Repoint dependent storage (CIFS `server` in `/etc/pve/storage.cfg`) to the VLAN IP *before* removing the flat IP, and force a remount — a lazy `umount -l` can leave a stacked/shadow mount, so pop the stack until the path is clean.
 
 ### TP-Link Easy Smart switch requires at least one port to create a VLAN
 The 802.1Q VLAN config form won't accept a new VLAN unless at least one port is set to Tagged or Untagged. Use any unused port as a temporary placeholder, then re-edit the VLAN to set real port memberships afterward.
