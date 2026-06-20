@@ -34,11 +34,15 @@ storage**.
 - **NICs**: 4 × NIC (onboard + added 4-port card)
   - `enp2s0f0` → vmbr0 (VLAN-aware) → OPNsense LAN trunk → switch Port 5
   - `enp2s0f1` → vmbr1 → OPNsense WAN (direct cable to travel router LAN)
-- **Management IP**: `192.168.8.138` (flat network; will move to MGMT VLAN 10)
-- **Switch port**: Port 5 (trunk to OPNsense)
+  - `enp2s0f2`, `enp2s0f3`, `eno1` → spare (down)
+- **Management IP**: `192.168.8.138` (flat, on `vmbr0`) **and** `10.0.10.3` (MGMT
+  VLAN 10, on tagged sub-interface `vmbr0.10`) — dual-homed. `vmbr0` was already
+  VLAN-aware (it trunks all VLANs to OPNsense), so this needed no switch change.
+- **Switch port**: Port 5 (trunk to OPNsense; already carries VLAN 10 tagged)
 - **Proxmox Role**: Cluster member + OPNsense host
-- **Notes**: Hosts the OPNsense VM (the lab's actual router/firewall). Both the
-  switch trunk and the direct WAN cable terminate here.
+- **Notes**: Hosts the OPNsense VM (VMID 100 — the lab's actual router/firewall).
+  Both the switch trunk and the direct WAN cable terminate here. Highest-stakes
+  node for management changes, since breaking `vmbr0` takes down the router.
 
 ## Storage & Quorum
 
@@ -118,7 +122,7 @@ Clients / Proxmox nodes / Pi NAS
 | Component       | Model                        | Specs / Role                                  | Status  |
 |-----------------|------------------------------|-----------------------------------------------|---------|
 | teejhost1       | Lenovo M920q (1 NIC)         | Compute + PBS host, .119 / .10.2 (VLAN 10)    | Active  |
-| teejhost2       | Lenovo M920q (4 NICs)        | Compute + OPNsense host, IP .138              | Active  |
+| teejhost2       | Lenovo M920q (4 NICs)        | Compute + OPNsense host, .138 / .10.3 (VLAN 10) | Active  |
 | teejlab-pi-nas  | Raspberry Pi 5 (8 GB)        | ZFS ~1.32 TiB, SMB + QDevice, .230 / .10.4    | Active  |
 | PBS             | VM 101 on teejhost1          | Proxmox Backup Server                         | Active  |
 | Switch          | TP-Link TL-SG108E            | 8-port 802.1Q managed                         | Active  |
@@ -129,8 +133,8 @@ Clients / Proxmox nodes / Pi NAS
 
 ---
 **Last Updated**: 2026-06-20
-**Next Step**: Migrate teejhost2 management onto MGMT VLAN 10 (last and most
-careful — it's the OPNsense host), then the cluster-wide corosync ring migration.
-Still to capture: per-node CPU model, RAM, and storage (`pveversion`, `lscpu`,
-`free -h`, `lsblk`); PBS storage target; NIC MACs if MAC-based DHCP reservations
-become needed.
+**Next Step**: Corosync cutover to VLAN 10 (promote `ring1`, drop the flat `ring0`,
+move the QDevice off `192.168.8.230`), then deprecate the flat network. All three
+nodes are dual-homed and corosync is redundant over both links. Still to capture:
+per-node CPU model, RAM, and storage (`pveversion`, `lscpu`, `free -h`, `lsblk`);
+PBS storage target; NIC MACs if MAC-based DHCP reservations become needed.

@@ -142,10 +142,11 @@ An `RFC1918` alias is already defined to support these future rules.
 - [x] End-to-end VLAN validation: client on Port 6 -> 10.0.30.X DHCP lease via OPNsense
 - [x] teejhost1 management dual-homed onto MGMT VLAN 10 (`10.0.10.2`, tagged `vmbr0.10`)
 - [x] teejlab-pi-nas management dual-homed onto MGMT VLAN 10 (`10.0.10.4`, tagged `eth0.10` via OMV)
-- [ ] teejhost2 management migrated to MGMT VLAN (last — OPNsense host)
-- [ ] Corosync ring migrated to VLAN 10 (cluster-wide, after all nodes dual-homed)
-- [ ] Legacy flat network (VLAN 1) deprecated (blocked on the corosync migration)
-- [ ] Remaining VLAN access ports configured on switch
+- [x] teejhost2 management dual-homed onto MGMT VLAN 10 (`10.0.10.3`, tagged `vmbr0.10`)
+- [x] Corosync second link (`ring1`) on VLAN 10 added and verified — redundant over flat + VLAN 10, both links connected
+- [ ] Corosync cutover: promote VLAN 10 to primary, remove flat `ring0`, move QDevice off `192.168.8.230`
+- [ ] Legacy flat network (VLAN 1) deprecated (blocked on the corosync cutover)
+- [ ] Remaining VLAN access ports configured on switch; switch management onto VLAN 10 (firmware-permitting)
 - [ ] Tailscale deployed on OPNsense for remote/cross-VLAN access
 - [ ] Firewall hardening pass (after VLAN migration completes)
 

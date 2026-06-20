@@ -23,9 +23,10 @@
 - [x] End-to-end VLAN validation (client on Port 6 → 10.0.30.x lease via OPNsense)
 - [ ] OPNsense: firewall hardening pass (default-deny inter-VLAN, DMZ → RFC1918 blocked)
 - [ ] Remaining VLAN access ports configured on switch
-- [~] Management interfaces migrated to MGMT VLAN 10 — done: teejhost1 (`10.0.10.2`), teejlab-pi-nas (`10.0.10.4`); remaining: teejhost2 (last, OPNsense host), then the TP-Link switch (firmware-permitting, since Easy Smart management-VLAN support is limited and lockout means a factory reset)
+- [x] Management interfaces dual-homed onto MGMT VLAN 10 — teejhost1 (`10.0.10.2`), teejlab-pi-nas (`10.0.10.4`), teejhost2 (`10.0.10.3`). Remaining: the TP-Link switch (firmware-permitting, since Easy Smart management-VLAN support is limited and lockout means a factory reset)
+- [~] Corosync on MGMT VLAN 10 — additive `ring1` added and verified (redundant over flat + VLAN 10, both links connected). Remaining: promote VLAN 10 to primary, remove the flat `ring0`, and move the QDevice off `192.168.8.230`
 - [ ] Internal DNS via OPNsense Unbound for `<service>.teejlab.dev` — depends on the VLAN migration above, so host IPs are final (`10.0.10.x`) before overrides are created
-- [ ] Legacy flat network (VLAN 1) deprecated
+- [ ] Legacy flat network (VLAN 1) deprecated — blocked on the corosync cutover and QDevice move above
 - [ ] Tailscale on OPNsense advertising lab subnets (remote access)
 - [x] Network documentation updated (`docs/architecture/network-architecture.md`)
 
@@ -227,9 +228,9 @@
 ## Current Status
 - **Phase**: 1 (Network Foundation) — core routing/segmentation live, in migration/hardening cleanup
 - **Blockers**: None
-- **Next Immediate Task**: Migrate teejhost2 management onto MGMT VLAN 10 (last node — OPNsense host, do carefully), then the cluster-wide corosync ring migration, then firewall hardening and internal DNS. teejhost1 + pi-nas already dual-homed.
+- **Next Immediate Task**: Corosync cutover — promote VLAN 10 (`ring1`) to primary, remove the flat `ring0`, and move the QDevice to `10.0.10.x`; then deprecate the flat network. After that: firewall hardening and internal DNS. (All three nodes dual-homed and corosync redundant over both links as of this revision.)
 
 ---
 
 **Last Updated**: 2026-06-20  
-**Revision**: 0.2
+**Revision**: 0.3
