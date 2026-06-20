@@ -2,7 +2,7 @@
 
 A self-hosted infrastructure lab built on Proxmox to learn and demonstrate DevOps practices end-to-end: networking, infrastructure-as-code, containerization, observability, and GitOps. Built in shared housing on consumer hardware, with the design tradeoffs that come with both constraints.
 
-This repo contains the architecture, decisions, and — over time — the code that runs it.
+This repo contains the architecture, decisions, and eventually the code that runs it.
 
 ## At a glance
 
