@@ -147,7 +147,7 @@ An `RFC1918` alias is already defined to support these future rules.
 - [ ] Corosync cutover: promote VLAN 10 to primary, remove flat `ring0`, move QDevice off `192.168.8.230`
 - [ ] Legacy flat network (VLAN 1) deprecated (blocked on the corosync cutover)
 - [ ] Remaining VLAN access ports configured on switch; switch management onto VLAN 10 (firmware-permitting)
-- [ ] Tailscale deployed on OPNsense for remote/cross-VLAN access
+- [x] Tailscale deployed on OPNsense for remote/cross-VLAN access (subnet router for `10.0.10.0/24`)
 - [ ] Firewall hardening pass (after VLAN migration completes)
 
 ## Future considerations

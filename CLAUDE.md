@@ -92,6 +92,7 @@ Triple NAT (lab → OPNsense → travel router → landlord). Inbound for public
 - End-to-end DHCP validated on LAB VLAN
 - All three nodes (teejhost1, teejhost2, teejlab-pi-nas) dual-homed onto MGMT VLAN 10
 - Corosync running redundantly over two links: `ring0` flat + `ring1` VLAN 10 (`10.0.10.2`/`10.0.10.3`). Flat net not yet retired — that needs promoting VLAN 10 to primary, removing `ring0`, and moving the QDevice off `192.168.8.230`.
+- Tailscale on OPNsense as a subnet router advertising `10.0.10.0/24` — remote web + SSH access to the lab from anywhere, no port forwarding. Decouples management from the flat net.
 
 ### Planned / in progress (DevOps focus)
 - IaC: Terraform + `bpg/proxmox` provider for VM provisioning
@@ -101,7 +102,6 @@ Triple NAT (lab → OPNsense → travel router → landlord). Inbound for public
 - GitOps: ArgoCD or Flux after k3s migration
 - Observability: Prometheus, Grafana, Loki, Alertmanager
 - Secrets: TBD (probably Vault or just sops with age for now)
-- Remote access: Tailscale on OPNsense, advertising lab subnets
 
 ### Self-hosted services planned (the "MSP stack" theme)
 - Gitea (self-hosted git mirror of public GitHub repos)

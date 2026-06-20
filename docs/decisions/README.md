@@ -43,3 +43,4 @@ What else was on the table and why it lost.
 - [0003 — Docker first, then k3s](0003-docker-first-then-k3s.md)
 - [0004 — OPNsense as a VM, not a hardware appliance](0004-opnsense-as-vm.md)
 - [0005 — Single-NIC management via VLAN dual-homing](0005-single-nic-vlan-dual-homing.md)
+- [0006 — Tailscale for remote and cross-VLAN access](0006-tailscale-for-remote-access.md)

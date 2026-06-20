@@ -27,7 +27,7 @@
 - [~] Corosync on MGMT VLAN 10 — additive `ring1` added and verified (redundant over flat + VLAN 10, both links connected). Remaining: promote VLAN 10 to primary, remove the flat `ring0`, and move the QDevice off `192.168.8.230`
 - [ ] Internal DNS via OPNsense Unbound for `<service>.teejlab.dev` — depends on the VLAN migration above, so host IPs are final (`10.0.10.x`) before overrides are created
 - [ ] Legacy flat network (VLAN 1) deprecated — blocked on the corosync cutover and QDevice move above
-- [ ] Tailscale on OPNsense advertising lab subnets (remote access)
+- [x] Tailscale on OPNsense advertising lab subnets (remote access) — subnet router advertising `10.0.10.0/24`, reachable web + SSH from off-network
 - [x] Network documentation updated (`docs/architecture/network-architecture.md`)
 
 ### Technical Steps
