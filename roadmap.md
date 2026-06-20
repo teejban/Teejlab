@@ -12,35 +12,42 @@
 
 **Why First**: All downstream services depend on stable, isolated networking. Easier to design right now than refactor later.
 
+**Status**: Core routing and segmentation are live — OPNsense is the lab's real router, all five active VLANs are defined end to end, and DHCP is validated. What's left is migration cleanup (moving management interfaces off the flat network, deprecating VLAN 1), the firewall hardening pass, internal DNS, and Tailscale for remote access.
+
 ### Deliverables
-- [ ] VLAN configuration on TP-Link switch (ports tagged/untagged)
-- [ ] OPNsense VM deployed on Node 1 with 2 NICs in passthrough
-- [ ] OPNsense: Uplink configured (WAN), internal routing (LAN)
-- [ ] OPNsense: Firewall rules for basic inter-VLAN policies
-- [ ] Internal DNS (TBD: AdGuard Home, Dnsmasq, or OPNsense DNS)
-- [ ] VLAN isolation verified (cross-VLAN traffic blocked)
-- [ ] All existing services migrated to VLAN 10 (management)
-- [ ] Network documentation updated
+- [x] VLAN configuration on TP-Link switch (ports tagged/untagged)
+- [x] OPNsense VM deployed on teejhost2 with dedicated NICs (WAN `enp2s0f1` → vmbr1, LAN trunk `enp2s0f0` → vmbr0)
+- [x] OPNsense: Uplink configured (WAN), internal routing (LAN)
+- [x] DHCP (Kea) serving all five active VLANs
+- [x] Proxmox `vmbr0` VLAN-aware on teejhost2, per-VM `trunks` set on the OPNsense NIC
+- [x] End-to-end VLAN validation (client on Port 6 → 10.0.30.x lease via OPNsense)
+- [ ] OPNsense: firewall hardening pass (default-deny inter-VLAN, DMZ → RFC1918 blocked)
+- [ ] Internal DNS via OPNsense Unbound for `<service>.teejlab.dev`
+- [ ] Remaining VLAN access ports configured on switch
+- [ ] Management interfaces migrated to MGMT VLAN 10 (teejhost1, teejhost2, teejlab-pi-nas)
+- [ ] Legacy flat network (VLAN 1) deprecated
+- [ ] Tailscale on OPNsense advertising lab subnets (remote access)
+- [x] Network documentation updated (`docs/architecture/network-architecture.md`)
 
 ### Technical Steps
-1. Plan IP allocations and VLAN membership (network-plan.md)
-2. Configure switch VLAN groups + tagging
-3. Deploy OPNsense (ISO boot, install, basic OS config)
-4. Configure OPNsense NICs (bridge, IP assignment, VLAN handling)
-5. Set up OPNsense firewall rules
-6. Deploy internal DNS service
-7. Test inter-VLAN routing and isolation
-8. Document any gotchas or MAC-address reservations
+1. ~~Plan IP allocations and VLAN membership~~ ✅ (`10.0.<vlan>.0/24`, OPNsense as `.1`)
+2. ~~Configure switch VLAN groups + tagging~~ ✅ (Port 5 trunk, Port 6 VLAN 30 access)
+3. ~~Deploy OPNsense (ISO boot, install, basic OS config)~~ ✅
+4. ~~Configure OPNsense NICs (bridge, IP assignment, VLAN handling)~~ ✅ (incl. per-VM `trunks` fix)
+5. Harden OPNsense firewall rules (currently permissive "pass any" during buildout)
+6. Deploy internal DNS (OPNsense Unbound, `teejlab.dev`)
+7. ~~Test inter-VLAN routing~~ ✅ — still need to verify isolation once default-deny is in place
+8. ~~Document gotchas~~ ✅ (VLAN-aware bridge `trunks` writeup) — add MAC reservations if needed
 
 ### Risks
 - **Lock yourself out**: OPNsense misconfiguration could break connectivity. Mitigation: console access always available, test in lab VLAN first.
 - **Switch vlan misconfiguration**: Flat network becomes split. Mitigation: document current port memberships before any changes.
 
 ### Definition of Done
-- Proxmox nodes can reach each other via VLAN 10
-- Lab/test VLAN can ping each other but not other VLANs
-- Internal DNS resolves .internal hostnames
-- Documentation is complete (network-plan.md updated)
+- Proxmox nodes can reach each other via MGMT VLAN 10 (pending — still on flat net)
+- Lab/test VLAN can reach the internet but is isolated from other VLANs (pending firewall hardening)
+- Internal DNS resolves `<service>.teejlab.dev` hostnames (pending)
+- [x] Documentation is complete (`docs/architecture/network-architecture.md`)
 
 ---
 
@@ -218,11 +225,11 @@
 ---
 
 ## Current Status
-- **Phase**: 1 (Network Foundation)
+- **Phase**: 1 (Network Foundation) — core routing/segmentation live, in migration/hardening cleanup
 - **Blockers**: None
-- **Next Immediate Task**: Plan VLAN configuration, then deploy OPNsense
+- **Next Immediate Task**: Migrate management interfaces (teejhost1/2, pi-nas) onto MGMT VLAN 10, then firewall hardening pass and internal DNS
 
 ---
 
-**Last Updated**: 2026-06-18  
-**Revision**: 0.1
+**Last Updated**: 2026-06-20  
+**Revision**: 0.2
