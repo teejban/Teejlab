@@ -22,9 +22,9 @@
 - [x] Proxmox `vmbr0` VLAN-aware on teejhost2, per-VM `trunks` set on the OPNsense NIC
 - [x] End-to-end VLAN validation (client on Port 6 → 10.0.30.x lease via OPNsense)
 - [ ] OPNsense: firewall hardening pass (default-deny inter-VLAN, DMZ → RFC1918 blocked)
-- [ ] Internal DNS via OPNsense Unbound for `<service>.teejlab.dev`
 - [ ] Remaining VLAN access ports configured on switch
-- [ ] Management interfaces migrated to MGMT VLAN 10 (teejhost1, teejhost2, teejlab-pi-nas)
+- [ ] Management interfaces migrated to MGMT VLAN 10 (teejhost1, teejhost2, teejlab-pi-nas, and the TP-Link switch last — firmware-permitting, since Easy Smart management-VLAN support is limited and lockout means a factory reset)
+- [ ] Internal DNS via OPNsense Unbound for `<service>.teejlab.dev` — depends on the VLAN migration above, so host IPs are final (`10.0.10.x`) before overrides are created
 - [ ] Legacy flat network (VLAN 1) deprecated
 - [ ] Tailscale on OPNsense advertising lab subnets (remote access)
 - [x] Network documentation updated (`docs/architecture/network-architecture.md`)
