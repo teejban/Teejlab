@@ -6,7 +6,7 @@ Persistent context for Claude Code when working in this repository.
 
 This repo documents a personal homelab built on a 2-node Proxmox cluster, with the explicit goal of demonstrating DevOps practices to land a DevOps-focused role. Everything in this repo should read as if a hiring manager might see it — clear, evidence-based, honest about constraints, and showing actual debugging and design work rather than tutorial output.
 
-Project handle: `teejlab` (also the owned domain `teejlab.io`).
+Project handle: `teejlab` (also the owned domain `teejlab.dev`).
 
 ## My goals
 
@@ -60,15 +60,17 @@ Triple NAT (lab → OPNsense → travel router → landlord). Inbound for public
 
 ## Domain and TLS
 
-- Domain: `teejlab.io` (owned, real public DNS).
-- Internal hostname pattern: `<service>.teejlab.io` even for internal-only services.
-- TLS plan: Let's Encrypt via DNS-01 challenge, since the public DNS is mine. No browser cert warnings for internal services — same UX as public ones.
+- Domain: `teejlab.dev` (owned — registered for 2 years). DNS hosted on Cloudflare.
+- Why `.dev`: cheaper and more stable than `.io`, and reads well for a DevOps portfolio. `.dev` is on the HSTS preload list, so browsers force HTTPS on it — which lines up with the all-TLS plan below.
+- Why Cloudflare for DNS: the inbound plan is Cloudflare Tunnel, which requires the zone to live on Cloudflare. Same account serves the Tunnel and the DNS-01 API token. (Registrar choice was deliberately decoupled from cloud — DNS host is what matters here, not where AWS workloads run. If real public AWS endpoints ever appear, delegate a subdomain like `aws.teejlab.dev` to Route 53 rather than moving the zone.)
+- Internal hostname pattern: `<service>.teejlab.dev` even for internal-only services.
+- TLS plan: Let's Encrypt via DNS-01 challenge, since the public DNS is mine. No browser cert warnings for internal services — same UX as public ones. (Note: ACM certs are not usable here — they can't be exported off AWS services — so Let's Encrypt is the path for homelab TLS regardless of any AWS usage.)
 
 ## Naming conventions
 
 - Hypervisors: `teejhost<N>` (e.g., `teejhost1`, `teejhost2`)
 - Services and infrastructure: `teejlab-<service>` (e.g., `teejlab-pi-nas`, `teejlab-tank`)
-- Internal DNS: `<service>.teejlab.io`
+- Internal DNS: `<service>.teejlab.dev`
 - VLANs: ALL CAPS short names (`MGMT`, `SERVERS`, etc.) matching their internal purpose
 - IP scheme: `10.0.<vlan-id>.0/24`, OPNsense as `.1`, DHCP pools start at `.10`
 

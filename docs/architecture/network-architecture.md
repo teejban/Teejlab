@@ -116,7 +116,7 @@ An `RFC1918` alias is already defined to support these future rules.
 
 ## Domain and TLS
 
-`teejlab.io` is owned, with public DNS. Internal services will use the same domain (`<service>.teejlab.io`). Let's Encrypt via DNS-01 challenge will issue valid certificates for internal hostnames — no browser warnings on lab-internal HTTPS services.
+`teejlab.dev` is owned, with DNS hosted on Cloudflare. Cloudflare was chosen over Route 53 because the inbound plan (Cloudflare Tunnel) requires the zone to live on Cloudflare, and the same account provides the API token for ACME DNS-01. Internal services will use the same domain (`<service>.teejlab.dev`). Let's Encrypt via DNS-01 challenge will issue valid certificates for internal hostnames — no browser warnings on lab-internal HTTPS services. `.dev` is HSTS-preloaded, so browsers force HTTPS on these hostnames by default.
 
 ## Constraints and tradeoffs
 
@@ -147,6 +147,6 @@ An `RFC1918` alias is already defined to support these future rules.
 ## Future considerations
 
 - WiFi access points broadcasting per-VLAN SSIDs (post-housing-change)
-- Internal DNS records via OPNsense Unbound for lab hostnames under `teejlab.io`
+- Internal DNS records via OPNsense Unbound for lab hostnames under `teejlab.dev`
 - Public Let's Encrypt certs for internal services via DNS-01
 - Site-to-site or VPN access for cross-subnet connectivity from remote locations

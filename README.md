@@ -13,7 +13,7 @@ This repo contains the architecture, decisions, and — over time — the code t
 | **Network** | OPNsense (VM) routing 5 segmented VLANs over a TP-Link L2 managed switch |
 | **Upstream** | GL-iNet travel router behind landlord WiFi (no control of upstream) |
 | **Backups** | Proxmox Backup Server |
-| **Domain** | `teejlab.io` (real DNS, enables Let's Encrypt DNS-01 for internal TLS) |
+| **Domain** | `teejlab.dev` (Cloudflare DNS, enables Let's Encrypt DNS-01 for internal TLS) |
 
 ## Architecture
 
