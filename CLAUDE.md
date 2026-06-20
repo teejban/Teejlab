@@ -18,22 +18,23 @@ Project handle: `teejlab` (also the owned domain `teejlab.dev`).
 
 ### Hypervisor cluster
 
-- **teejhost1** — Lenovo ThinkCentre M920q (mini PC). 1 NIC. Proxmox node. IP `192.168.8.119` (flat network, will move to MGMT VLAN).
+- **teejhost1** — Lenovo ThinkCentre M920q (mini PC). 1 NIC (`eno1`). Proxmox node; also hosts the PBS VM (VMID 101). Dual-homed: `192.168.8.119` (flat) + `10.0.10.2` (MGMT VLAN 10, tagged `vmbr0.10`).
 - **teejhost2** — Lenovo ThinkCentre M920q (mini PC). 4 NICs (added 4-port card). Proxmox node. Hosts OPNsense VM. IP `192.168.8.138`.
 - Cluster totals: 12 CPUs, ~94 GiB RAM, ~888 GiB storage.
 
 ### Storage
 
-- **teejlab-pi-nas** — Raspberry Pi 5 (8GB), SATA HAT with 4 SSDs, ZFS pool `teejlab-tank` (~1.32 TiB). Runs OpenMediaVault 7. Doubles as cluster QDevice and SMB target for Proxmox + other clients. IP `192.168.8.230`.
+- **teejlab-pi-nas** — Raspberry Pi 5 (8GB), SATA HAT with 4 SSDs, ZFS pool `teejlab-tank` (~1.32 TiB). Runs OpenMediaVault 7. Doubles as cluster QDevice and SMB target for Proxmox + other clients. NIC `eth0`. Dual-homed: `192.168.8.230` (flat) + `10.0.10.4` (MGMT VLAN 10, tagged `eth0.10`).
 
 ### Networking
 
 - **TP-Link TL-SG108E** managed switch (8 ports, 802.1Q VLANs). Port assignments:
-  - Port 3 → teejhost1
+  - Port 2 → teejlab-pi-nas (trunk: untagged VLAN 1 + tagged VLAN 10)
+  - Port 3 → teejhost1 (trunk: untagged VLAN 1 + tagged VLAN 10)
   - Port 4 → travel router uplink (kept for legacy flat network during transition)
   - Port 5 → teejhost2 (trunk port to OPNsense)
   - Port 6 → VLAN 30 access (lab test port)
-  - Ports 1, 2, 7, 8 → currently free
+  - Ports 1, 7, 8 → currently free
 - **GL-iNet GL-A1300 (Slate Plus)** travel router — upstream link, runs OpenWRT, connects to landlord's WiFi as WAN.
 
 ### Other
@@ -85,10 +86,11 @@ Triple NAT (lab → OPNsense → travel router → landlord). Inbound for public
 
 ### Already in place
 - Proxmox cluster with QDevice quorum
-- Proxmox Backup Server
+- Proxmox Backup Server (VM 101 on teejhost1)
 - OPNsense routing, DHCP per VLAN, basic firewall
 - Switch with 802.1Q VLANs configured
 - End-to-end DHCP validated on LAB VLAN
+- teejhost1 and teejlab-pi-nas dual-homed onto MGMT VLAN 10 (corosync still on flat net pending the cluster-wide ring migration; teejhost2 not yet migrated)
 
 ### Planned / in progress (DevOps focus)
 - IaC: Terraform + `bpg/proxmox` provider for VM provisioning
@@ -148,6 +150,14 @@ When writing or editing documentation in this repo:
 When making a Proxmox bridge VLAN-aware, the bridge itself accepting tagged frames is only half the work. Each VM NIC's `tap` interface defaults to VLAN 1 (PVID) only, so tagged frames hit the bridge but get dropped before reaching the VM. Fix: add `trunks=10;20;30;40;50` (semicolon-separated) to the VM NIC line in `/etc/pve/qemu-server/<vmid>.conf`, or set the Trunks field in the GUI if your Proxmox version exposes it. Verify with `bridge vlan show`.
 
 Diagnostic flow that found it: tcpdump on the physical NIC (saw tagged DHCP) → tcpdump on vmbr0 (still saw it) → tcpdump on the VM's tap (saw nothing). The "missing" hop is the bug.
+
+### Single-NIC host management on a VLAN = dual-homing, not a second NIC
+A host with one NIC can still live on a management VLAN: keep the existing untagged IP on the bridge and add a tagged VLAN sub-interface (`vmbr0.10` on Proxmox, `eth0.10` on the Pi) for the new IP, then make the switch port a trunk (untagged VLAN 1 PVID + tagged VLAN 10). Both IPs ride one cable. Keep the flat IP in place — for a clustered node it carries corosync, and it's your no-lockout fallback. Only one default gateway across the two interfaces.
+
+Debugging note: `Destination Host Unreachable` *from your own VLAN IP* means ARP isn't resolving — an L2 problem (the switch port wasn't trunking the VLAN yet), not an IP/config problem. The actual fix that bit us: the TP-Link needs **Modify** to apply a VLAN membership change, then a separate **Save Config** to persist it.
+
+### OpenMediaVault owns its network config — don't hand-edit
+OMV stores config in its own database and regenerates the live `systemd-networkd` files on apply, so editing config files directly gets silently overwritten. Add VLAN interfaces through the OMV UI (Network → Interfaces → Create → VLAN), then **Apply** the pending-changes banner. Equivalent from the shell: `sudo omv-salt deploy run systemd-networkd` (must be root, or it fails with a salt-cache `PermissionError`). A reboot does *not* deploy pending changes.
 
 ### TP-Link Easy Smart switch requires at least one port to create a VLAN
 The 802.1Q VLAN config form won't accept a new VLAN unless at least one port is set to Tagged or Untagged. Use any unused port as a temporary placeholder, then re-edit the VLAN to set real port memberships afterward.

@@ -34,18 +34,21 @@ OPNsense acts as the lab's actual router: handling DHCP, DNS, inter-VLAN routing
 
 +------------------------------------------------------+
 | TP-Link TL-SG108E managed switch                     |
-| Port 3: teejhost1 (single NIC, currently flat net)   |
+| Port 2: teejlab-pi-nas (trunk: untagged 1, tagged 10)|
+| Port 3: teejhost1 (trunk: untagged 1, tagged 10)     |
 | Port 4: Travel router uplink (legacy flat network)   |
 | Port 5: teejhost2 enp2s0f0 (trunk to OPNsense LAN)   |
 | Port 6: VLAN 30 access port (test/lab clients)       |
-| Ports 1, 2, 7, 8: free                               |
+| Ports 1, 7, 8: free                                  |
 +------------------------------------------------------+
 
 [teejhost1: 1 NIC]    [teejhost2: 4 NICs, hosts OPNsense]    [teejlab-pi-nas]
                                                               (QDevice + SMB target)
 ```
 
-Both the travel router uplink to the switch *and* the direct WAN cable to OPNsense terminate on **teejhost2**. teejhost1 is currently a pure compute node connected only to the switch.
+Both the travel router uplink to the switch *and* the direct WAN cable to OPNsense terminate on **teejhost2**. teejhost1 is a pure compute node (also hosting the PBS VM) connected only to the switch.
+
+teejhost1 and teejlab-pi-nas are now **dual-homed**: each keeps its flat IP for cluster/QDevice traffic and carries a tagged VLAN 10 management address (`10.0.10.2` and `10.0.10.4`) over the same single NIC, via a trunked switch port. teejhost2's management migration and the corosync ring move are still pending.
 
 ## VLAN scheme
 
@@ -64,6 +67,7 @@ OPNsense holds `.1` on each subnet and acts as gateway, DHCP server, and DNS res
 ## Switch port plan
 
 - **Port 5 (trunk to OPNsense)**: untagged VLAN 1 (legacy), tagged VLANs 10, 20, 30, 40, 50
+- **Port 3 (teejhost1)** and **Port 2 (teejlab-pi-nas)**: trunks — untagged VLAN 1 (PVID 1, for flat/cluster traffic), tagged VLAN 10 (management)
 - **Port 6 (VLAN 30 access)**: untagged VLAN 30, PVID 30
 - Additional access ports will be configured per VLAN as devices migrate from the flat network
 
@@ -136,13 +140,14 @@ An `RFC1918` alias is already defined to support these future rules.
 - [x] Proxmox vmbr0 VLAN-aware on teejhost2
 - [x] Per-VM trunks config on OPNsense VM NIC
 - [x] End-to-end VLAN validation: client on Port 6 -> 10.0.30.X DHCP lease via OPNsense
+- [x] teejhost1 management dual-homed onto MGMT VLAN 10 (`10.0.10.2`, tagged `vmbr0.10`)
+- [x] teejlab-pi-nas management dual-homed onto MGMT VLAN 10 (`10.0.10.4`, tagged `eth0.10` via OMV)
+- [ ] teejhost2 management migrated to MGMT VLAN (last — OPNsense host)
+- [ ] Corosync ring migrated to VLAN 10 (cluster-wide, after all nodes dual-homed)
+- [ ] Legacy flat network (VLAN 1) deprecated (blocked on the corosync migration)
 - [ ] Remaining VLAN access ports configured on switch
-- [ ] teejlab-pi-nas migrated from flat network to MGMT VLAN
-- [ ] teejhost1 management migrated to MGMT VLAN
-- [ ] teejhost2 management migrated to MGMT VLAN
-- [ ] Legacy flat network (VLAN 1) deprecated
 - [ ] Tailscale deployed on OPNsense for remote/cross-VLAN access
-- [ ] Firewall hardening pass
+- [ ] Firewall hardening pass (after VLAN migration completes)
 
 ## Future considerations
 

@@ -228,10 +228,24 @@ waits until those final `10.0.10.x` IPs are settled.
 
 ## Lessons learned
 
-_(Fill in after the run — what tripped you up, what you'd do differently. This is the part
-worth writing honestly.)_
+- **NIC name was `eno1`.** Confirmed with `ip -br a` before editing — worth doing rather
+  than assuming, since M920q onboard NICs can also enumerate as `enp0s31f6`.
+- **`ifreload -a` applied cleanly** — no reboot needed. The bridge switched to VLAN-aware
+  live, with at most a momentary blip to the PBS VM (which stayed on VLAN 1 as expected).
+- **The failure was downstream, and the symptom told us so.** After the host config, the
+  ping gave `Destination Host Unreachable` *from `10.0.10.2` itself* — that's ARP failing to
+  resolve, i.e. an L2 problem, not an IP one. The host was fine (`bridge vlan show dev eno1
+  vid 10` confirmed VLAN 10 on the uplink); the switch port was the holdup.
+- **The TP-Link gotcha: Modify, then Save.** Setting Port 3 to tagged VLAN 10 does nothing
+  until you hit **Modify** on the 802.1Q VLAN form, and it's RAM-only until **System Tools →
+  Save Config**. The whole ping failure was just Port 3 not yet trunking.
+- **`pvecm status` was unchanged** after the migration — corosync never noticed, because it's
+  still on the flat net (by design). Confirms the dual-homing left the cluster alone.
 
-- NIC name actually was: _____
-- Did `ifreload -a` apply cleanly, or did it need a full reboot? _____
-- TP-Link three-menu VLAN gotchas this time: _____
-- Anything surprising in `pvecm status` after the change: _____
+### What I'd do differently
+
+- **Do the switch trunk *first*, then the host interface.** Going host-first left a confusing
+  "interface is up but can't ping" window. Trunk the port first and the host config works on
+  the first try.
+- **Verify VLAN 10 end-to-end before starting** — the only prior validation was on VLAN 30, so
+  VLAN 10 was unproven going in. It worked, but that was luck, not diligence.

@@ -23,7 +23,7 @@
 - [x] End-to-end VLAN validation (client on Port 6 → 10.0.30.x lease via OPNsense)
 - [ ] OPNsense: firewall hardening pass (default-deny inter-VLAN, DMZ → RFC1918 blocked)
 - [ ] Remaining VLAN access ports configured on switch
-- [ ] Management interfaces migrated to MGMT VLAN 10 (teejhost1, teejhost2, teejlab-pi-nas, and the TP-Link switch last — firmware-permitting, since Easy Smart management-VLAN support is limited and lockout means a factory reset)
+- [~] Management interfaces migrated to MGMT VLAN 10 — done: teejhost1 (`10.0.10.2`), teejlab-pi-nas (`10.0.10.4`); remaining: teejhost2 (last, OPNsense host), then the TP-Link switch (firmware-permitting, since Easy Smart management-VLAN support is limited and lockout means a factory reset)
 - [ ] Internal DNS via OPNsense Unbound for `<service>.teejlab.dev` — depends on the VLAN migration above, so host IPs are final (`10.0.10.x`) before overrides are created
 - [ ] Legacy flat network (VLAN 1) deprecated
 - [ ] Tailscale on OPNsense advertising lab subnets (remote access)
@@ -227,7 +227,7 @@
 ## Current Status
 - **Phase**: 1 (Network Foundation) — core routing/segmentation live, in migration/hardening cleanup
 - **Blockers**: None
-- **Next Immediate Task**: Migrate management interfaces (teejhost1/2, pi-nas) onto MGMT VLAN 10, then firewall hardening pass and internal DNS
+- **Next Immediate Task**: Migrate teejhost2 management onto MGMT VLAN 10 (last node — OPNsense host, do carefully), then the cluster-wide corosync ring migration, then firewall hardening and internal DNS. teejhost1 + pi-nas already dual-homed.
 
 ---
 

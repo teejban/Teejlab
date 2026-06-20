@@ -17,12 +17,14 @@ storage**.
 - **CPU**: _(not yet recorded — see cluster total)_
 - **RAM**: _(not yet recorded — see cluster total)_
 - **Storage**: _(not yet recorded — see cluster total)_
-- **NICs**: 1 × onboard NIC
-- **Management IP**: `192.168.8.119` (flat network; will move to MGMT VLAN 10)
-- **Switch port**: Port 3
-- **Proxmox Role**: Cluster member (pure compute node)
-- **Notes**: Single NIC means everything will eventually trunk over one port.
-  Currently flat-network only.
+- **NICs**: 1 × onboard NIC (`eno1`)
+- **Management IP**: `192.168.8.119` (flat, on `vmbr0`) **and** `10.0.10.2` (MGMT
+  VLAN 10, on tagged sub-interface `vmbr0.10`) — dual-homed
+- **Switch port**: Port 3 (trunk: untagged VLAN 1 + tagged VLAN 10)
+- **Proxmox Role**: Cluster member (pure compute node); also hosts the PBS VM
+- **Notes**: Single NIC, so management rides a tagged VLAN over the one trunk.
+  Dual-homed during transition — flat IP retained for corosync until the
+  cluster-wide ring migration. Runs the Proxmox Backup Server as VMID 101.
 
 ### teejhost2 (compute + OPNsense host)
 - **Type**: Lenovo ThinkCentre M920q (mini PC)
@@ -45,16 +47,21 @@ storage**.
 - **RAM**: 8 GB
 - **Storage**: 4 × SSD on a SATA HAT, ZFS pool `teejlab-tank` (~1.32 TiB)
 - **OS**: OpenMediaVault 7
-- **IP**: `192.168.8.230` (flat network; will move to MGMT VLAN 10)
+- **NIC**: `eth0`
+- **IP**: `192.168.8.230` (flat, on `eth0`) **and** `10.0.10.4` (MGMT VLAN 10, on
+  tagged sub-interface `eth0.10`) — dual-homed
+- **Switch port**: Port 2 (trunk: untagged VLAN 1 + tagged VLAN 10)
 - **Purpose**: SMB target for Proxmox + other clients **and** cluster QDevice
   (quorum tie-breaker for the 2-node cluster)
-- **Network**: Wired Ethernet to switch
+- **Network**: Wired Ethernet to switch. VLAN interface added via the OMV UI
+  (OMV owns the network config, so it is not hand-edited).
 
 ### Proxmox Backup Server
-- **Deployment**: _(not yet recorded — confirm whether VM or dedicated)_
+- **Deployment**: VM (VMID 101) on teejhost1
 - **Storage Target**: _(not yet recorded — likely the Pi NAS SMB/ZFS share)_
 - **Status**: Running
-- **Notes**: In place as part of current tooling.
+- **Notes**: Runs with the Proxmox firewall enabled on its VM NIC. Stays on the
+  flat network (untagged VLAN 1) after teejhost1's bridge went VLAN-aware.
 
 ## Network Hardware
 
@@ -64,11 +71,12 @@ storage**.
 - **VLAN Support**: Yes (802.1Q)
 - **PoE**: No
 - **Port assignments**:
-  - Port 3 → teejhost1
+  - Port 2 → teejlab-pi-nas (trunk: untagged VLAN 1, tagged VLAN 10)
+  - Port 3 → teejhost1 (trunk: untagged VLAN 1, tagged VLAN 10)
   - Port 4 → travel router uplink (legacy flat network, kept during transition)
   - Port 5 → teejhost2 (trunk to OPNsense: untagged VLAN 1, tagged 10/20/30/40/50)
   - Port 6 → VLAN 30 access port (lab/test clients, PVID 30)
-  - Ports 1, 2, 7, 8 → free
+  - Ports 1, 7, 8 → free
 - **Notes**: Easy Smart quirks — 802.1Q config spans three menus, needs an
   explicit Save Config to persist across reboots, and needs at least one port
   member to create a VLAN.
@@ -109,10 +117,10 @@ Clients / Proxmox nodes / Pi NAS
 ## Summary Table
 | Component       | Model                        | Specs / Role                                  | Status  |
 |-----------------|------------------------------|-----------------------------------------------|---------|
-| teejhost1       | Lenovo M920q (1 NIC)         | Compute node, IP .119                         | Active  |
+| teejhost1       | Lenovo M920q (1 NIC)         | Compute + PBS host, .119 / .10.2 (VLAN 10)    | Active  |
 | teejhost2       | Lenovo M920q (4 NICs)        | Compute + OPNsense host, IP .138              | Active  |
-| teejlab-pi-nas  | Raspberry Pi 5 (8 GB)        | ZFS `teejlab-tank` ~1.32 TiB, SMB + QDevice   | Active  |
-| PBS             | _(deployment TBD)_           | Proxmox Backup Server                         | Active  |
+| teejlab-pi-nas  | Raspberry Pi 5 (8 GB)        | ZFS ~1.32 TiB, SMB + QDevice, .230 / .10.4    | Active  |
+| PBS             | VM 101 on teejhost1          | Proxmox Backup Server                         | Active  |
 | Switch          | TP-Link TL-SG108E            | 8-port 802.1Q managed                         | Active  |
 | Travel router   | GL-iNet GL-A1300 (Slate Plus)| OpenWRT, WiFi-as-WAN, .1                       | Active  |
 | OPNsense        | VM on teejhost2              | Router/firewall, dedicated WAN + LAN NICs     | Active  |
@@ -121,6 +129,8 @@ Clients / Proxmox nodes / Pi NAS
 
 ---
 **Last Updated**: 2026-06-20
-**Next Step**: Capture per-node CPU model, RAM, and storage from each node
-(`pveversion`, `lscpu`, `free -h`, `lsblk`) and confirm PBS deployment/target.
-Add NIC MAC addresses if MAC-based DHCP reservations become needed.
+**Next Step**: Migrate teejhost2 management onto MGMT VLAN 10 (last and most
+careful — it's the OPNsense host), then the cluster-wide corosync ring migration.
+Still to capture: per-node CPU model, RAM, and storage (`pveversion`, `lscpu`,
+`free -h`, `lsblk`); PBS storage target; NIC MACs if MAC-based DHCP reservations
+become needed.
