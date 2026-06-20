@@ -21,33 +21,28 @@ OPNsense is the lab's actual router. The travel router is treated as an opaque I
 
 Layer-2 segmentation comes from the managed switch passing 802.1Q tagged frames to a VLAN-aware Proxmox bridge, which trunks them through to OPNsense's LAN interface. Each VLAN has its own subnet, DHCP scope, and firewall policy.
 
-See [`docs/network/network-architecture.md`](docs/network/network-architecture.md) for the full design — topology, VLAN scheme, IP plan, traffic flow.
+See [`docs/architecture/network-architecture.md`](docs/architecture/network-architecture.md) for the full design — topology, VLAN scheme, IP plan, traffic flow.
+
+## Status
+
+**Phase 1 — Network Foundation** (in progress). OPNsense routing and all five VLANs are live; management interfaces are migrating from the flat network onto a dedicated MGMT VLAN. Up next: IaC with Terraform and Ansible.
+
+The full phased plan and progress live in [`docs/roadmap.md`](docs/roadmap.md).
 
 ## Repo layout
 
 ```
 docs/
-  architecture/   high-level design, decision records
-  network/        VLAN design, OPNsense, switch config
+  roadmap.md      phased plan and progress
+  architecture/   high-level design, network topology
   runbooks/       operational procedures, troubleshooting writeups
+  decisions/      architecture decision records (ADRs)
 infra/
   terraform/      Proxmox VM provisioning           (planned)
   ansible/        host config management            (planned)
   docker/         self-hosted services              (planned)
   k8s/            manifests and Helm charts         (planned after Docker phase)
 ```
-
-## Roadmap
-
-- [x] Multi-VLAN segmented network with OPNsense routing
-- [x] End-to-end validation: tagged frames through Proxmox VLAN-aware bridge to client
-- [ ] Terraform module for Proxmox VM provisioning (`bpg/proxmox` provider)
-- [ ] Ansible playbooks for host and VM configuration
-- [ ] Docker host with self-hosted services (Gitea, BookStack, monitoring)
-- [ ] Migrate workloads from Docker Compose to k3s
-- [ ] GitOps with ArgoCD
-- [ ] Observability stack: Prometheus, Grafana, Loki, Alertmanager
-- [ ] Public portfolio site behind Cloudflare Tunnel with ephemeral per-visitor demos
 
 ## Notes
 

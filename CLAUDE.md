@@ -114,16 +114,19 @@ Triple NAT (lab → OPNsense → travel router → landlord). Inbound for public
 
 ```
 docs/
-  architecture/      # high-level design, diagrams, decisions
-  network/           # VLAN design, OPNsense setup, switch config
+  roadmap.md         # phased plan and progress
+  architecture/      # high-level design, network topology, diagrams
   runbooks/          # operational procedures, troubleshooting writeups
-  decisions/         # ADRs (architecture decision records)
+  decisions/         # ADRs (architecture decision records), one file per decision
 infra/
   terraform/         # IaC for Proxmox VMs (planned)
   ansible/           # config management (planned)
   docker/            # compose files for self-hosted services
   k8s/               # manifests / helm charts (after migration)
 ```
+
+The README is the front door (what it is, status, links); `docs/roadmap.md` owns the
+detailed plan; ADRs in `docs/decisions/` capture *why* behind significant choices.
 
 ## Documentation style preferences
 
