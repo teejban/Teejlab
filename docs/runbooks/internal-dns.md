@@ -85,11 +85,18 @@ getent hosts github.com >/dev/null 2>&1 && echo "  OK    external (github.com)" 
 [ "$fail" = 0 ] && echo "=== ALL GOOD ===" || echo "=== SOME CHECKS FAILED ==="
 ```
 
-## Still optional: resolve these names from the laptop over Tailscale
+## Resolve these names from the laptop over Tailscale (done)
 
 Tailscale clients use their own DNS, so add **split DNS** in the Tailscale admin console →
 DNS → Nameservers → Custom: nameserver `10.0.10.1`, **restricted to `teejlab.dev`**. Then
 `*.teejlab.dev` resolves from anywhere on the tailnet; everything else uses normal DNS.
+
+Requirements on the client: the **"Use Tailscale DNS settings"** and **"Use Tailscale
+subnets"** toggles must be on (so the split-DNS rule applies and `10.0.10.1` is reachable via
+the subnet route). On Windows, Tailscale installs the rule as an **NRPT** policy routing
+`teejlab.dev → 100.100.100.100` (Tailscale's MagicDNS resolver), which then forwards to
+`10.0.10.1`. Verify with `Get-DnsClientNrptPolicy` (PowerShell) — look for the `.teejlab.dev`
+namespace.
 
 ## Lessons learned
 
@@ -103,6 +110,11 @@ DNS → Nameservers → Custom: nameserver `10.0.10.1`, **restricted to `teejlab
   `127.0.0.1` to the DNS-servers list).
 - **Split-horizon is the point**: `teejlab.dev` is public on Cloudflare, but the lab answers its
   own names with private IPs locally — no private IPs leak to the public zone.
+- **`nslookup` ignores NRPT / split-DNS — it lies.** With Tailscale split-DNS, `nslookup
+  pbs.teejlab.dev` kept failing (querying the laptop's normal DNS at `192.168.86.1`) even though
+  the setup was correct, because `nslookup` talks directly to the adapter's DNS and bypasses the
+  Windows NRPT policy. Apps, browsers, `ping`, and `Resolve-DnsName` all honor NRPT and resolved
+  fine. **Test split-DNS/VPN setups with `Resolve-DnsName` or `ping`, never `nslookup`.**
 - **Don't name the firewall the same as your clean management record.** A multi-homed firewall
   auto-registers its *own hostname* against every interface IP, so naming the OS hostname `edge`
   made `edge.teejlab.dev` return all five VLAN gateways + the WAN IP (the test caught it by
