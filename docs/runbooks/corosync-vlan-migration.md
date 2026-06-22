@@ -121,7 +121,8 @@ What was actually done:
 After this the cluster runs entirely on VLAN 10 with the QDevice at `10.0.10.4` — no flat-net
 dependency. The flat IPs were then removed from the hosts (see the per-host runbooks), and the
 CIFS storage repointed to `10.0.10.4`. Remaining before VLAN 1 can be fully retired: migrate
-the PBS VM (`192.168.8.233`) and scrub VLAN 1 off the switch.
+the PBS VM and scrub VLAN 1 off the switch. _(Both since done: PBS was rebuilt
+VLAN-10-native at `10.0.10.6`; VLAN 1 is kept on the switch as a deliberate break-glass net.)_
 
 ## Lessons learned
 

@@ -25,8 +25,7 @@ storage**.
 - **Proxmox Role**: Cluster member (pure compute node); also hosts the PBS VM
 - **Notes**: Single NIC, so management rides a tagged VLAN over the one trunk.
   Fully on VLAN 10 — flat IP removed after corosync moved off it. Runs the Proxmox
-  Backup Server as VMID 101 (the PBS VM itself still has a flat IP, `192.168.8.233`,
-  pending its own migration).
+  Backup Server as VMID 101 (`pbs`, now VLAN-10-native at `10.0.10.6`).
 
 ### teejhost2 (compute + OPNsense host)
 - **Type**: Lenovo ThinkCentre M920q (mini PC)
@@ -64,13 +63,14 @@ storage**.
   (OMV owns the network config, so it is not hand-edited).
 
 ### Proxmox Backup Server
-- **Deployment**: VM (VMID 101) on teejhost1
-- **IP**: `192.168.8.233` — **still on the flat network**, the last flat-net dependency
-- **Storage**: own datastore `teejlab-backups`; Proxmox `teejlab-pbs` storage points at `192.168.8.233`
-- **Status**: Running
-- **Notes**: The PBS VM is the only thing left on the flat net. Nodes (now VLAN-10-only)
-  reach it via OPNsense for now. To migrate: give the VM a `10.0.10.x` address and repoint
-  the `teejlab-pbs` storage — a future session (don't rush the backup server).
+- **Deployment**: VM (VMID 101, name `pbs`) on teejhost1; hostname `pbs` → `pbs.teejlab.dev`
+- **IP**: `10.0.10.6` (MGMT VLAN 10, NIC tagged `tag=10`) — rebuilt VLAN-10-native
+- **Datastore**: `teejlab-backups` at `/mnt/pbs-backups`, backed by NFS from the Pi
+  (`10.0.10.4:/export/teejlab-backups`, export needs `no_root_squash`, folder owned uid 34)
+- **Cluster storage**: added as `pbs` (server `10.0.10.6`, user `root@pam`, fingerprint-trusted)
+- **Status**: Running; test backup of OPNsense verified
+- **Notes**: Rebuilt from scratch on VLAN 10 rather than migrated (see
+  `docs/runbooks/pbs-rebuild.md`). This closed the last flat-net dependency in the lab.
 
 ## Network Hardware
 
@@ -129,7 +129,7 @@ Clients / Proxmox nodes / Pi NAS
 | teejhost1       | Lenovo M920q (1 NIC)         | Compute + PBS host, 10.0.10.2 (VLAN 10)       | Active  |
 | teejhost2       | Lenovo M920q (4 NICs)        | Compute + OPNsense host, 10.0.10.3 (VLAN 10)  | Active  |
 | teejlab-pi-nas  | Raspberry Pi 5 (8 GB)        | ZFS ~1.32 TiB, SMB + QDevice, 10.0.10.4       | Active  |
-| PBS             | VM 101 on teejhost1          | Proxmox Backup Server, .233 (still flat)      | Active  |
+| PBS (`pbs`)     | VM 101 on teejhost1          | Backup server, 10.0.10.6, datastore on Pi/NFS | Active  |
 | Switch          | TP-Link TL-SG108E            | 8-port 802.1Q managed                         | Active  |
 | Travel router   | GL-iNet GL-A1300 (Slate Plus)| OpenWRT, WiFi-as-WAN, .1                       | Active  |
 | OPNsense        | VM on teejhost2              | Router/firewall, dedicated WAN + LAN NICs     | Active  |
@@ -138,8 +138,7 @@ Clients / Proxmox nodes / Pi NAS
 
 ---
 **Last Updated**: 2026-06-20
-**Next Step**: Migrate the PBS VM (`192.168.8.233`) to VLAN 10 and repoint the
-`teejlab-pbs` storage; then scrub VLAN 1 off the switch (careful — Easy Smart
-management lives on it). All Proxmox hosts + the Pi are now VLAN-10-only; corosync
-and the QDevice run on VLAN 10. Still to capture: per-node CPU/RAM/storage
-(`pveversion`, `lscpu`, `free -h`, `lsblk`); NIC MACs if MAC reservations are needed.
+**Next Step**: Flat-net migration is complete — all hosts, corosync, the QDevice, and PBS are
+on VLAN 10. VLAN 1 is intentionally kept on the switch as a break-glass recovery network (its
+management IP lives there). Remaining/future: internal DNS, firewall hardening, the lab mail
+server. Still to capture: per-node CPU/RAM/storage (`pveversion`, `lscpu`, `free -h`, `lsblk`).

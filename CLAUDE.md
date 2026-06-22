@@ -91,14 +91,14 @@ Rule of thumb: use the `teejlab-` prefix **only where there is no `teejlab.dev` 
 
 ### Already in place
 - Proxmox cluster with QDevice quorum
-- Proxmox Backup Server (VM 101 on teejhost1)
+- Proxmox Backup Server — rebuilt VLAN-10-native as VM 101 `pbs` (`10.0.10.6`), datastore on the Pi via NFS; test backup verified
 - OPNsense routing, DHCP per VLAN, basic firewall
 - Switch with 802.1Q VLANs configured
 - End-to-end DHCP validated on LAB VLAN
 - All hosts migrated to MGMT VLAN 10 with flat IPs removed: teejhost1 (`10.0.10.2`), teejhost2 (`10.0.10.3`), teejlab-pi-nas (`10.0.10.4`)
 - Corosync on a single VLAN 10 link (flat `ring0` removed); QDevice on `10.0.10.4`; CIFS storage repointed to `10.0.10.4`
 - Tailscale on OPNsense as a subnet router advertising `10.0.10.0/24` — remote web + SSH access to the lab from anywhere, no port forwarding. Decouples management from the flat net.
-- Last flat-net dependency: the PBS VM at `192.168.8.233` (its migration + `teejlab-pbs` storage repoint is the next task). The switch's own management IP is also still on VLAN 1.
+- **Flat-net migration complete** — nothing in the lab uses VLAN 1. VLAN 1 is intentionally kept on the switch as a break-glass recovery network (the Easy Smart switch's own management IP lives there); not deprecated by design.
 
 ### Planned / in progress (DevOps focus)
 - IaC: Terraform + `bpg/proxmox` provider for VM provisioning

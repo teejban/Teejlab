@@ -25,9 +25,9 @@
 - [ ] Remaining VLAN access ports configured on switch
 - [x] Management interfaces migrated to MGMT VLAN 10 (flat IPs removed) — teejhost1 (`10.0.10.2`), teejhost2 (`10.0.10.3`), teejlab-pi-nas (`10.0.10.4`). Remaining: the TP-Link switch (firmware-permitting, since Easy Smart management-VLAN support is limited and lockout means a factory reset)
 - [x] Corosync migrated to MGMT VLAN 10 — added `ring1`, then cut over to a single VLAN 10 link and removed flat `ring0`; QDevice moved to `10.0.10.4`. CIFS storage repointed to `10.0.10.4`.
-- [ ] PBS VM (`192.168.8.233`) migrated to VLAN 10 + `teejlab-pbs` storage repointed — the last flat-net dependency
+- [x] PBS rebuilt VLAN-10-native (`pbs`, `10.0.10.6`), datastore on the Pi via NFS — closed the last flat-net dependency (see `docs/runbooks/pbs-rebuild.md`)
+- [x] Flat network retired from the lab — VLAN 1 intentionally kept on the switch as a break-glass recovery net (the Easy Smart switch's own management lives there); not deprecating it by design
 - [ ] Internal DNS via OPNsense Unbound for `<service>.teejlab.dev` — host IPs are now final (`10.0.10.x`), so ready to start
-- [ ] Legacy flat network (VLAN 1) deprecated — blocked on the PBS move and the switch management migration
 - [x] Tailscale on OPNsense advertising lab subnets (remote access) — subnet router advertising `10.0.10.0/24`, reachable web + SSH from off-network
 - [x] Network documentation updated (`docs/architecture/network-architecture.md`)
 
@@ -232,9 +232,9 @@
 ## Current Status
 - **Phase**: 1 (Network Foundation) — core routing/segmentation live, in migration/hardening cleanup
 - **Blockers**: None
-- **Next Immediate Task**: Migrate the PBS VM (`192.168.8.233`) onto VLAN 10 and repoint the `teejlab-pbs` storage (last flat-net dependency); then internal DNS, firewall hardening, and the switch-side VLAN 1 scrub. (All hosts + corosync + QDevice are on VLAN 10 as of this revision; flat IPs removed.)
+- **Next Immediate Task**: VLAN 10 migration is complete (all hosts, corosync, QDevice, and PBS on VLAN 10; flat net retired from the lab, VLAN 1 kept on the switch as break-glass). Next: internal DNS (Unbound `*.teejlab.dev`), then firewall hardening, then the lab mail server.
 
 ---
 
 **Last Updated**: 2026-06-21  
-**Revision**: 0.5
+**Revision**: 0.6
