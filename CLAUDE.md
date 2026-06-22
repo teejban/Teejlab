@@ -99,6 +99,7 @@ Rule of thumb: use the `teejlab-` prefix **only where there is no `teejlab.dev` 
 - Corosync on a single VLAN 10 link (flat `ring0` removed); QDevice on `10.0.10.4`; CIFS storage repointed to `10.0.10.4`
 - Tailscale on OPNsense as a subnet router advertising `10.0.10.0/24` — remote web + SSH access to the lab from anywhere, no port forwarding. Decouples management from the flat net.
 - **Flat-net migration complete** — nothing in the lab uses VLAN 1. VLAN 1 is intentionally kept on the switch as a break-glass recovery network (the Easy Smart switch's own management IP lives there); not deprecated by design.
+- Internal split-horizon DNS via OPNsense Unbound: `edge`/`teejhost1`/`teejhost2`/`nas`/`pbs` under `teejlab.dev`, every host pointed at `10.0.10.1`. OPNsense OS hostname is `opnsense` (kept distinct from the `edge` management alias, since a firewall self-registers to all interfaces). See [docs/runbooks/internal-dns.md].
 
 ### Planned / in progress (DevOps focus)
 - IaC: Terraform + `bpg/proxmox` provider for VM provisioning

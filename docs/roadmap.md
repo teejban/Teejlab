@@ -27,7 +27,7 @@
 - [x] Corosync migrated to MGMT VLAN 10 — added `ring1`, then cut over to a single VLAN 10 link and removed flat `ring0`; QDevice moved to `10.0.10.4`. CIFS storage repointed to `10.0.10.4`.
 - [x] PBS rebuilt VLAN-10-native (`pbs`, `10.0.10.6`), datastore on the Pi via NFS — closed the last flat-net dependency (see `docs/runbooks/pbs-rebuild.md`)
 - [x] Flat network retired from the lab — VLAN 1 intentionally kept on the switch as a break-glass recovery net (the Easy Smart switch's own management lives there); not deprecating it by design
-- [ ] Internal DNS via OPNsense Unbound for `<service>.teejlab.dev` — host IPs are now final (`10.0.10.x`), so ready to start
+- [x] Internal DNS via OPNsense Unbound for `<service>.teejlab.dev` — host overrides for `edge`/`teejhost1`/`teejhost2`/`nas`/`pbs`, every box pointed at `10.0.10.1`, split-horizon working (see `docs/runbooks/internal-dns.md`)
 - [x] Tailscale on OPNsense advertising lab subnets (remote access) — subnet router advertising `10.0.10.0/24`, reachable web + SSH from off-network
 - [x] Network documentation updated (`docs/architecture/network-architecture.md`)
 
@@ -232,9 +232,9 @@
 ## Current Status
 - **Phase**: 1 (Network Foundation) — core routing/segmentation live, in migration/hardening cleanup
 - **Blockers**: None
-- **Next Immediate Task**: VLAN 10 migration is complete (all hosts, corosync, QDevice, and PBS on VLAN 10; flat net retired from the lab, VLAN 1 kept on the switch as break-glass). Next: internal DNS (Unbound `*.teejlab.dev`), then firewall hardening, then the lab mail server.
+- **Next Immediate Task**: VLAN 10 migration + internal DNS are complete. Next: firewall hardening pass (default-deny inter-VLAN), then the lab mail server; optional Tailscale split-DNS so `*.teejlab.dev` resolves from the laptop.
 
 ---
 
 **Last Updated**: 2026-06-21  
-**Revision**: 0.6
+**Revision**: 0.7
