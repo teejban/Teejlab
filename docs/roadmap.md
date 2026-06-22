@@ -185,7 +185,9 @@
 ### Deliverables
 - [ ] Monitoring stack: Prometheus + Grafana
 - [ ] Centralized logging: Loki or ELK
-- [ ] Alerting: AlertManager → Slack/webhook
+- [ ] Alerting: AlertManager → email/Slack/webhook (email via the lab mail server below)
+- [ ] Lab mail server (Mailcow on `lab.teejlab.dev`) — internal alerts/notices + user/app testing; **no public inbound** (per [ADR-0007](decisions/0007-hybrid-cloud-edge-vs-home-compute.md))
+- [ ] Outbound mail relay via **Amazon SES** (the cloud trust-edge) + SPF/DKIM/DMARC on the subdomain via Cloudflare
 - [ ] Backup automation: Proxmox Backup Server + retention policy
 - [ ] Ephemeral resume website (spun up on-demand, deployed by CI/CD)
 - [ ] GitOps documentation + architecture diagram
@@ -197,9 +199,10 @@
 3. Set up Grafana dashboards (infrastructure, app-level, business metrics)
 4. Deploy Loki for log aggregation
 5. Configure AlertManager for incident escalation
-6. Document disaster recovery (restore from PBS)
-7. Build resume site (static HTML or lightweight Node app)
-8. Deploy via CI/CD workflow
+6. Stand up the mail server (Mailcow) on `lab.teejlab.dev`; relay outbound through Amazon SES; add SPF/DKIM/DMARC; point lab services' SMTP at it
+7. Document disaster recovery (restore from PBS)
+8. Build resume site (static HTML or lightweight Node app)
+9. Deploy via CI/CD workflow
 
 ### Risks
 - **Over-engineering**: Build too much, run out of time. Mitigation: prioritize (monitoring > logging > resume site).
@@ -233,5 +236,5 @@
 
 ---
 
-**Last Updated**: 2026-06-20  
-**Revision**: 0.4
+**Last Updated**: 2026-06-21  
+**Revision**: 0.5
