@@ -69,11 +69,16 @@ Triple NAT (lab → OPNsense → travel router → landlord). Inbound for public
 
 ## Naming conventions
 
-- Hypervisors: `teejhost<N>` (e.g., `teejhost1`, `teejhost2`)
-- Services and infrastructure: `teejlab-<service>` (e.g., `teejlab-pi-nas`, `teejlab-tank`)
-- Internal DNS: `<service>.teejlab.dev`
-- VLANs: ALL CAPS short names (`MGMT`, `SERVERS`, etc.) matching their internal purpose
-- IP scheme: `10.0.<vlan-id>.0/24`, OPNsense as `.1`, DHCP pools start at `.10`
+Rule of thumb: use the `teejlab-` prefix **only where there is no `teejlab.dev` domain to provide the namespace.** For anything DNS-addressable, the domain already carries "teejlab," so the hostname stays short (`teejlab-pbs.teejlab.dev` is redundant; `pbs.teejlab.dev` is the goal). See [ADR-0008](docs/decisions/0008-short-hostnames-under-domain.md).
+
+- **DNS-addressable hosts/services**: short hostname + domain → `<service>.teejlab.dev` (e.g. `pbs` → `pbs.teejlab.dev`, `opnsense` → `opnsense.teejlab.dev`). No `teejlab-` prefix. The Proxmox VM display name matches the hostname (e.g. VM `pbs`, hostname `pbs`).
+- **Hypervisors**: `teejhost<N>` (e.g. `teejhost1`, `teejhost2`) → `teejhost1.teejlab.dev`. Role-based, not redundant ("teejhost" ≠ "teejlab").
+- **Non-DNS identifiers** (storage pools, the project handle): keep the `teejlab-` prefix — no domain to carry the namespace (e.g. ZFS pool `teejlab-tank`, handle `teejlab`).
+- **Internal DNS**: `<service>.teejlab.dev`
+- **VLANs**: ALL CAPS short names (`MGMT`, `SERVERS`, etc.) matching their internal purpose
+- **IP scheme**: `10.0.<vlan-id>.0/24`, OPNsense as `.1`, DHCP pools start at `.10`
+
+> Migration note: `teejlab-pi-nas` predates this convention (it's DNS-addressable, so would be `nas` → `nas.teejlab.dev`). Rename is low-priority; leave until convenient.
 
 ## Key constraints (always relevant)
 

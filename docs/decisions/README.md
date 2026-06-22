@@ -45,3 +45,4 @@ What else was on the table and why it lost.
 - [0005 — Single-NIC management via VLAN dual-homing](0005-single-nic-vlan-dual-homing.md)
 - [0006 — Tailscale for remote and cross-VLAN access](0006-tailscale-for-remote-access.md)
 - [0007 — Hybrid model: cloud for the trust-requiring edge, home lab for compute](0007-hybrid-cloud-edge-vs-home-compute.md)
+- [0008 — Short hostnames under the domain (drop the redundant `teejlab-` prefix)](0008-short-hostnames-under-domain.md)
