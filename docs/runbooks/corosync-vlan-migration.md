@@ -133,3 +133,13 @@ the PBS VM (`192.168.8.233`) and scrub VLAN 1 off the switch.
   passing corosync traffic.
 - **`config_version` bump is mandatory.** Easy to forget; without it the edit is silently
   ignored.
+- **The cluster kept dialing the old IP after the cutover — `/etc/hosts` + `.members` were
+  stale.** Corosync was correctly on VLAN 10, but the cross-node web UI / shell / migration
+  timed out, because Proxmox resolves nodes by hostname and `/etc/hosts` still pointed at the
+  removed flat IPs. Worse, `/etc/pve/.members` *caches* each node's IP (resolved from its
+  hostname at service start), so even after fixing `/etc/hosts` the old value lingered until
+  each node re-read it. Fix: correct `/etc/hosts` on every node, then `systemctl restart
+  pve-cluster pvedaemon pveproxy pvestatd` on each (or reboot — which also validated the whole
+  config survives a restart). **Diagnostic tell:** `curl -k https://10.0.10.3:8006` returned
+  the login page while the UI timed out — connectivity fine, app dialing the cached dead
+  address. "Network is up" is not the same as "every service knows the new address."
