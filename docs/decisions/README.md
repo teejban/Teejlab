@@ -46,3 +46,5 @@ What else was on the table and why it lost.
 - [0006 — Tailscale for remote and cross-VLAN access](0006-tailscale-for-remote-access.md)
 - [0007 — Hybrid model: cloud for the trust-requiring edge, home lab for compute](0007-hybrid-cloud-edge-vs-home-compute.md)
 - [0008 — Short hostnames under the domain (drop the redundant `teejlab-` prefix)](0008-short-hostnames-under-domain.md)
+- [0009 — Automatic TLS strategy (DNS-01, native ACME for infra, reverse proxy for services)](0009-automatic-tls-strategy.md)
+- [0010 — Build the first Docker host by hand now, codify in IaC later](0010-docker-host-build-then-codify.md)

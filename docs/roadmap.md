@@ -12,7 +12,7 @@
 
 **Why First**: All downstream services depend on stable, isolated networking. Easier to design right now than refactor later.
 
-**Status**: Core routing and segmentation are live — OPNsense is the lab's real router, all five active VLANs are defined end to end, and DHCP is validated. What's left is migration cleanup (moving management interfaces off the flat network, deprecating VLAN 1), the firewall hardening pass, internal DNS, and Tailscale for remote access.
+**Status**: Nearly complete. OPNsense routing + all five VLANs, the full VLAN 10 migration (hosts, corosync, QDevice, PBS — flat net retired from the lab), internal DNS, Tailscale remote access, and TLS on the infra UIs are all done. Remaining: the **firewall hardening pass** and the remaining per-VLAN switch access ports. (The reverse-proxy auto-TLS layer doubles as the bridge into the Docker phase.)
 
 ### Deliverables
 - [x] VLAN configuration on TP-Link switch (ports tagged/untagged)
@@ -28,7 +28,8 @@
 - [x] PBS rebuilt VLAN-10-native (`pbs`, `10.0.10.6`), datastore on the Pi via NFS — closed the last flat-net dependency (see `docs/runbooks/pbs-rebuild.md`)
 - [x] Flat network retired from the lab — VLAN 1 intentionally kept on the switch as a break-glass recovery net (the Easy Smart switch's own management lives there); not deprecating it by design
 - [x] Internal DNS via OPNsense Unbound for `<service>.teejlab.dev` — host overrides for `edge`/`teejhost1`/`teejhost2`/`nas`/`pbs`, every box pointed at `10.0.10.1`, split-horizon working (see `docs/runbooks/internal-dns.md`)
-- [x] Tailscale on OPNsense advertising lab subnets (remote access) — subnet router advertising `10.0.10.0/24`, reachable web + SSH from off-network
+- [x] TLS — real Let's Encrypt certs (DNS-01 / Cloudflare) on the four infra UIs (`teejhost1`/`teejhost2`/`pbs`/`edge`), auto-renewing (see `docs/runbooks/tls-letsencrypt-dns01.md`). Pending: reverse proxy + `*.teejlab.dev` wildcard for auto-TLS on services; NAS fronted via that proxy; switch is HTTP-only
+- [x] Tailscale on OPNsense advertising lab subnets (remote access) — subnet router advertising `10.0.10.0/24`, reachable web + SSH from off-network, + split-DNS so `*.teejlab.dev` resolves on the laptop
 - [x] Network documentation updated (`docs/architecture/network-architecture.md`)
 
 ### Technical Steps
@@ -37,7 +38,7 @@
 3. ~~Deploy OPNsense (ISO boot, install, basic OS config)~~ ✅
 4. ~~Configure OPNsense NICs (bridge, IP assignment, VLAN handling)~~ ✅ (incl. per-VM `trunks` fix)
 5. Harden OPNsense firewall rules (currently permissive "pass any" during buildout)
-6. Deploy internal DNS (OPNsense Unbound, `teejlab.dev`)
+6. ~~Deploy internal DNS (OPNsense Unbound, `teejlab.dev`)~~ ✅ (split-horizon host overrides)
 7. ~~Test inter-VLAN routing~~ ✅ — still need to verify isolation once default-deny is in place
 8. ~~Document gotchas~~ ✅ (VLAN-aware bridge `trunks` writeup) — add MAC reservations if needed
 
@@ -46,9 +47,9 @@
 - **Switch vlan misconfiguration**: Flat network becomes split. Mitigation: document current port memberships before any changes.
 
 ### Definition of Done
-- Proxmox nodes can reach each other via MGMT VLAN 10 (pending — still on flat net)
-- Lab/test VLAN can reach the internet but is isolated from other VLANs (pending firewall hardening)
-- Internal DNS resolves `<service>.teejlab.dev` hostnames (pending)
+- [x] Proxmox nodes reach each other via MGMT VLAN 10 (flat net retired)
+- [ ] Lab/test VLAN can reach the internet but is isolated from other VLANs (pending firewall hardening)
+- [x] Internal DNS resolves `<service>.teejlab.dev` hostnames
 - [x] Documentation is complete (`docs/architecture/network-architecture.md`)
 
 ---
@@ -230,11 +231,11 @@
 ---
 
 ## Current Status
-- **Phase**: 1 (Network Foundation) — core routing/segmentation live, in migration/hardening cleanup
+- **Phase**: 1 (Network Foundation) — nearly complete; firewall hardening is the last big item. Bridging early into Phase 3 (Docker) for the reverse-proxy auto-TLS layer.
 - **Blockers**: None
-- **Next Immediate Task**: VLAN 10 migration + internal DNS are complete. Next: firewall hardening pass (default-deny inter-VLAN), then the lab mail server; optional Tailscale split-DNS so `*.teejlab.dev` resolves from the laptop.
+- **Next Immediate Task**: Stand up the first **Docker host + reverse proxy** (Caddy/Traefik) for automatic TLS on services (also fronts the NAS UI), then the **firewall hardening pass**, then the lab mail server.
 
 ---
 
-**Last Updated**: 2026-06-21  
-**Revision**: 0.7
+**Last Updated**: 2026-06-23  
+**Revision**: 0.8

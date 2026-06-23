@@ -18,9 +18,9 @@ Project handle: `teejlab` (also the owned domain `teejlab.dev`).
 
 ### Hypervisor cluster
 
-- **teejhost1** — Lenovo ThinkCentre M920q (mini PC). 1 NIC (`eno1`). Proxmox node; also hosts the PBS VM (VMID 101). IP `10.0.10.2` (MGMT VLAN 10, tagged `vmbr0.10`); flat IP removed.
-- **teejhost2** — Lenovo ThinkCentre M920q (mini PC). 4 NICs (added 4-port card; `enp2s0f0` LAN trunk → vmbr0, `enp2s0f1` WAN → vmbr1, `enp2s0f2`/`enp2s0f3`/`eno1` spare). Proxmox node. Hosts the OPNsense VM (VMID 100). IP `10.0.10.3` (MGMT VLAN 10, tagged `vmbr0.10`); flat IP removed.
-- Cluster totals: 12 CPUs, ~94 GiB RAM, ~888 GiB storage.
+- **teejhost1** — Lenovo ThinkCentre M920q (mini PC). i5-8400T (6c/6t), **62 GiB RAM**, 2 disks (Samsung 850 PRO 512 GB SATA + KIOXIA 512 GB NVMe). 1 NIC (`eno1`). Proxmox node; also hosts the PBS VM (VMID 101). IP `10.0.10.2` (MGMT VLAN 10, tagged `vmbr0.10`); flat IP removed. The larger node → preferred home for new VMs (e.g. the Docker host).
+- **teejhost2** — Lenovo ThinkCentre M920q (mini PC). i5-8400T (6c/6t), **31 GiB RAM**, 1 disk (TEAM 500 GB NVMe). 4 NICs (added 4-port card; `enp2s0f0` LAN trunk → vmbr0, `enp2s0f1` WAN → vmbr1, `enp2s0f2`/`enp2s0f3`/`eno1` spare). Proxmox node. Hosts the OPNsense VM (VMID 100, named `edge`). IP `10.0.10.3` (MGMT VLAN 10, tagged `vmbr0.10`); flat IP removed.
+- Cluster totals: 12 threads (2× i5-8400T), ~93 GiB RAM (62 + 31), ~1.4 TB raw disk. Proxmox VE 8.4.19.
 
 ### Storage
 
@@ -65,7 +65,7 @@ Triple NAT (lab → OPNsense → travel router → landlord). Inbound for public
 - Why `.dev`: cheaper and more stable than `.io`, and reads well for a DevOps portfolio. `.dev` is on the HSTS preload list, so browsers force HTTPS on it — which lines up with the all-TLS plan below.
 - Why Cloudflare for DNS: the inbound plan is Cloudflare Tunnel, which requires the zone to live on Cloudflare. Same account serves the Tunnel and the DNS-01 API token. (Registrar choice was deliberately decoupled from cloud — DNS host is what matters here, not where AWS workloads run. If real public AWS endpoints ever appear, delegate a subdomain like `aws.teejlab.dev` to Route 53 rather than moving the zone.)
 - Internal hostname pattern: `<service>.teejlab.dev` even for internal-only services.
-- TLS plan: Let's Encrypt via DNS-01 challenge, since the public DNS is mine. No browser cert warnings for internal services — same UX as public ones. (Note: ACM certs are not usable here — they can't be exported off AWS services — so Let's Encrypt is the path for homelab TLS regardless of any AWS usage.)
+- TLS: Let's Encrypt via **DNS-01** (Cloudflare token), since the public DNS is mine. **Live** on the four infra UIs (Proxmox ×2, PBS, OPNsense) via each platform's native ACME — real, auto-renewing certs. `.dev` is HSTS-preloaded, so valid certs are mandatory (no self-signed click-through). For services spun up going forward, TLS is handled centrally by a **reverse proxy + `*.teejlab.dev` wildcard** (see ADR-0009 and `docs/runbooks/tls-letsencrypt-dns01.md`). Exceptions: the NAS UI (no native ACME → via the reverse proxy) and the switch (HTTP-only hardware). (ACM certs aren't usable here — can't be exported off AWS — so Let's Encrypt is the path regardless of any AWS use.)
 
 ## Naming conventions
 
@@ -100,6 +100,7 @@ Rule of thumb: use the `teejlab-` prefix **only where there is no `teejlab.dev` 
 - Tailscale on OPNsense as a subnet router advertising `10.0.10.0/24` — remote web + SSH access to the lab from anywhere, no port forwarding. Decouples management from the flat net.
 - **Flat-net migration complete** — nothing in the lab uses VLAN 1. VLAN 1 is intentionally kept on the switch as a break-glass recovery network (the Easy Smart switch's own management IP lives there); not deprecated by design.
 - Internal split-horizon DNS via OPNsense Unbound: `edge`/`teejhost1`/`teejhost2`/`nas`/`pbs` under `teejlab.dev`, every host pointed at `10.0.10.1`. OPNsense OS hostname is `opnsense` (kept distinct from the `edge` management alias, since a firewall self-registers to all interfaces). See [docs/runbooks/internal-dns.md].
+- TLS on the four infra UIs via Let's Encrypt DNS-01 (Cloudflare) — real auto-renewing certs (Proxmox ×2 + PBS native ACME; OPNsense `os-acme-client`). See [docs/runbooks/tls-letsencrypt-dns01.md] and [ADR-0009](docs/decisions/0009-automatic-tls-strategy.md). Pending: reverse proxy + `*.teejlab.dev` wildcard for auto-TLS on services (NAS fronted there; switch is HTTP-only).
 
 ### Planned / in progress (DevOps focus)
 - IaC: Terraform + `bpg/proxmox` provider for VM provisioning

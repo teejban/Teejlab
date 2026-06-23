@@ -2,21 +2,18 @@
 
 The lab is a 2-node Proxmox cluster with a Raspberry Pi acting as both NAS and
 cluster QDevice. One node (`teejhost2`) carries the routing/firewall workload as
-an OPNsense VM and has the extra NICs to do it; the other (`teejhost1`) is a
-single-NIC compute node. Cluster totals: **12 CPUs, ~94 GiB RAM, ~888 GiB
-storage**.
-
-> Per-node CPU/RAM/storage splits below are marked _(not yet recorded)_ where the
-> exact figure hasn't been captured from the node directly. The cluster totals
-> above are confirmed.
+an OPNsense VM and has the extra NICs to do it; the other (`teejhost1`) has a
+single NIC but is the larger node (more RAM + a second disk) and hosts the PBS VM.
+Both run **Proxmox VE 8.4.19**. Cluster totals: **12 threads** (2× Intel i5-8400T,
+6c/6t each), **~93 GiB RAM** (62 + 31), **~1.4 TB raw disk**.
 
 ## Proxmox Nodes
 
 ### teejhost1 (compute)
 - **Type**: Lenovo ThinkCentre M920q (mini PC)
-- **CPU**: _(not yet recorded — see cluster total)_
-- **RAM**: _(not yet recorded — see cluster total)_
-- **Storage**: _(not yet recorded — see cluster total)_
+- **CPU**: Intel Core i5-8400T @ 1.70 GHz (6 cores / 6 threads)
+- **RAM**: 62 GiB
+- **Storage**: 2 × ~512 GB — Samsung 850 PRO 512 GB (SATA, `sda`) + KIOXIA 512 GB (NVMe, `nvme0n1`)
 - **NICs**: 1 × onboard NIC (`eno1`)
 - **Management IP**: `10.0.10.2` (MGMT VLAN 10, on tagged sub-interface `vmbr0.10`;
   default gateway `10.0.10.1`). Flat IP removed — `vmbr0` is now `manual` (no host IP),
@@ -29,9 +26,9 @@ storage**.
 
 ### teejhost2 (compute + OPNsense host)
 - **Type**: Lenovo ThinkCentre M920q (mini PC)
-- **CPU**: _(not yet recorded — see cluster total)_
-- **RAM**: _(not yet recorded — see cluster total)_
-- **Storage**: _(not yet recorded — see cluster total)_
+- **CPU**: Intel Core i5-8400T @ 1.70 GHz (6 cores / 6 threads)
+- **RAM**: 31 GiB
+- **Storage**: 1 × ~500 GB — TEAM TM8FPK500G (NVMe, `nvme0n1`)
 - **NICs**: 4 × NIC (onboard + added 4-port card)
   - `enp2s0f0` → vmbr0 (VLAN-aware) → OPNsense LAN trunk → switch Port 5
   - `enp2s0f1` → vmbr1 → OPNsense WAN (direct cable to travel router LAN)
@@ -41,9 +38,9 @@ storage**.
   carrying the OPNsense LAN trunk. `vmbr0` was already VLAN-aware, so no switch change.
 - **Switch port**: Port 5 (trunk to OPNsense; already carries VLAN 10 tagged)
 - **Proxmox Role**: Cluster member + OPNsense host
-- **Notes**: Hosts the OPNsense VM (VMID 100 — the lab's actual router/firewall).
-  Both the switch trunk and the direct WAN cable terminate here. Highest-stakes
-  node for management changes, since breaking `vmbr0` takes down the router.
+- **Notes**: Hosts the OPNsense VM (VMID 100, named `edge` — the lab's actual
+  router/firewall). Both the switch trunk and the direct WAN cable terminate here.
+  Highest-stakes node for management changes, since breaking `vmbr0` takes down the router.
 
 ## Storage & Quorum
 
@@ -101,12 +98,18 @@ storage**.
   Cloudflare Tunnel.
 
 ### OPNsense Router (VM)
-- **Deployment**: VM on teejhost2, using dedicated NICs
+- **Deployment**: VM (VMID 100, display name `edge`) on teejhost2, dedicated NICs
   (WAN `enp2s0f1` → vmbr1, LAN trunk `enp2s0f0` → vmbr0)
+- **OS hostname**: `opnsense`; managed at **`edge.teejlab.dev`** (`10.0.10.1`), real
+  Let's Encrypt cert via the `os-acme-client` plugin (DNS-01)
 - **Purpose**: Internal routing, firewall, inter-VLAN routing, DHCP (Kea), DNS
-- **Status**: **Active** — WAN routing functional, DHCP serving all five active
-  VLANs, end-to-end VLAN validation passed
-- **Notes**: Holds `.1` on every VLAN subnet. This is the lab's real router.
+  (Unbound), Tailscale subnet router
+- **Status**: **Active** — routing, DHCP on five VLANs, internal DNS, and Tailscale all live
+- **Notes**: Holds `.1` on every VLAN subnet — the lab's real router. The `edge`
+  management record is a host override → `10.0.10.1`; the OS hostname is deliberately
+  *not* `edge` (a multi-homed firewall self-registers to all its interface IPs). The
+  two WAN-side `192.168.8.x` addresses are the OPNsense WAN (DHCP lease from the travel
+  router) — _(confirm whether the second is a VIP/leftover)_.
 
 ## Network Uplink Path
 ```
@@ -132,13 +135,14 @@ Clients / Proxmox nodes / Pi NAS
 | PBS (`pbs`)     | VM 101 on teejhost1          | Backup server, 10.0.10.6, datastore on Pi/NFS | Active  |
 | Switch          | TP-Link TL-SG108E            | 8-port 802.1Q managed                         | Active  |
 | Travel router   | GL-iNet GL-A1300 (Slate Plus)| OpenWRT, WiFi-as-WAN, .1                       | Active  |
-| OPNsense        | VM on teejhost2              | Router/firewall, dedicated WAN + LAN NICs     | Active  |
+| OPNsense (`edge`) | VM 100 on teejhost2        | Router/FW/DNS/Tailscale, `edge.teejlab.dev`   | Active  |
 
-**Cluster totals**: 12 CPUs · ~94 GiB RAM · ~888 GiB storage
+**Cluster totals**: 12 threads (2× i5-8400T 6c/6t) · ~93 GiB RAM (62 + 31) · ~1.4 TB raw disk · Proxmox VE 8.4.19
 
 ---
-**Last Updated**: 2026-06-20
-**Next Step**: Flat-net migration is complete — all hosts, corosync, the QDevice, and PBS are
-on VLAN 10. VLAN 1 is intentionally kept on the switch as a break-glass recovery network (its
-management IP lives there). Remaining/future: internal DNS, firewall hardening, the lab mail
-server. Still to capture: per-node CPU/RAM/storage (`pveversion`, `lscpu`, `free -h`, `lsblk`).
+**Last Updated**: 2026-06-23
+**Next Step**: Network foundation essentially complete — VLAN 10 migration, internal DNS, and
+TLS (real Let's Encrypt certs on all four infra UIs) are done. Next: first **Docker host +
+reverse proxy** (Caddy/Traefik) for automatic TLS on services, then the firewall hardening
+pass, then the lab mail server. TLS exceptions: the **NAS UI** (no native ACME — front it via
+the reverse proxy later) and the **switch** (HTTP-only hardware — not a TLS candidate).

@@ -48,7 +48,7 @@ OPNsense acts as the lab's actual router: handling DHCP, DNS, inter-VLAN routing
 
 Both the travel router uplink to the switch *and* the direct WAN cable to OPNsense terminate on **teejhost2**. teejhost1 is a pure compute node (also hosting the PBS VM) connected only to the switch.
 
-teejhost1 and teejlab-pi-nas are now **dual-homed**: each keeps its flat IP for cluster/QDevice traffic and carries a tagged VLAN 10 management address (`10.0.10.2` and `10.0.10.4`) over the same single NIC, via a trunked switch port. teejhost2's management migration and the corosync ring move are still pending.
+All three nodes are now fully on **MGMT VLAN 10** (`10.0.10.2/3/4`), each via a tagged sub-interface on a single NIC over a trunked switch port; the flat IPs have been removed. Corosync and the QDevice also run on VLAN 10, so the cluster has no flat-net dependency. VLAN 1 is retained on the switch only as a break-glass recovery network.
 
 ## VLAN scheme
 
@@ -120,13 +120,15 @@ An `RFC1918` alias is already defined to support these future rules.
 
 ## Domain and TLS
 
-`teejlab.dev` is owned, with DNS hosted on Cloudflare. Cloudflare was chosen over Route 53 because the inbound plan (Cloudflare Tunnel) requires the zone to live on Cloudflare, and the same account provides the API token for ACME DNS-01. Internal services will use the same domain (`<service>.teejlab.dev`). Let's Encrypt via DNS-01 challenge will issue valid certificates for internal hostnames — no browser warnings on lab-internal HTTPS services. `.dev` is HSTS-preloaded, so browsers force HTTPS on these hostnames by default.
+`teejlab.dev` is owned, with DNS hosted on Cloudflare (chosen over Route 53 because the inbound plan, Cloudflare Tunnel, requires the zone there, and the same account provides the ACME DNS-01 API token). Internal services use `<service>.teejlab.dev`, resolved by OPNsense Unbound as split-horizon — see `docs/runbooks/internal-dns.md`.
+
+TLS is **live** via Let's Encrypt **DNS-01** (Cloudflare). The four infra UIs — `teejhost1`/`teejhost2` (Proxmox), `pbs` (PBS), `edge` (OPNsense) — each hold real, auto-renewing certs via their native ACME clients. `.dev` is HSTS-preloaded (browsers force HTTPS and refuse the self-signed bypass), so valid certs are mandatory here, not cosmetic. Services spun up going forward get TLS centrally from a reverse proxy holding a `*.teejlab.dev` wildcard (see `docs/runbooks/tls-letsencrypt-dns01.md` and ADR-0009). The NAS UI (no native ACME) will be fronted by that proxy; the switch is HTTP-only hardware and not a TLS candidate.
 
 ## Constraints and tradeoffs
 
 **Shared housing**: no control over upstream WiFi, no static IP, no port forwarding through the landlord's router. Inbound publishing uses Cloudflare Tunnel as a workaround.
 
-**1-NIC asymmetry**: teejhost1 has a single NIC, teejhost2 has 4. OPNsense lives on teejhost2 to use dedicated NICs for WAN (`enp2s0f1`) and LAN trunk (`enp2s0f0`). teejhost1 will eventually carry all VLANs over a single trunk port.
+**1-NIC asymmetry**: teejhost1 has a single NIC, teejhost2 has 4. OPNsense lives on teejhost2 to use dedicated NICs for WAN (`enp2s0f1`) and LAN trunk (`enp2s0f0`). teejhost1 carries its management (and any VM VLANs) tagged over its one trunk port via `vmbr0.10`.
 
 **Triple NAT**: a consequence of the housing situation, not a design choice. Outbound is unaffected. Inbound is sidestepped entirely via Cloudflare Tunnel.
 
@@ -152,11 +154,16 @@ An `RFC1918` alias is already defined to support these future rules.
 - [x] Flat network retired from the lab — nothing in the cluster uses VLAN 1 anymore
 - [~] VLAN 1 intentionally kept on the switch as a break-glass recovery network (the Easy Smart switch's own management IP lives there); not deprecated by design
 - [x] Tailscale deployed on OPNsense for remote/cross-VLAN access (subnet router for `10.0.10.0/24`)
-- [ ] Firewall hardening pass (now safe to do — management fully on VLAN 10 + Tailscale)
+- [x] Internal DNS — Unbound split-horizon for `*.teejlab.dev`; every host points at `10.0.10.1`
+- [x] TLS — real Let's Encrypt certs (DNS-01 / Cloudflare) on all four infra UIs, auto-renewing
+- [ ] Reverse proxy + `*.teejlab.dev` wildcard for automatic TLS on spun-up services
+- [ ] Firewall hardening pass (now safe — management fully on VLAN 10 + Tailscale)
 
 ## Future considerations
 
+- First Docker host + reverse proxy (Caddy/Traefik) holding a `*.teejlab.dev` wildcard — automatic TLS for any service spun up
+- Firewall hardening pass (default-deny inter-VLAN)
+- Migrate the switch's management onto VLAN 10 (firmware-permitting) and fully retire VLAN 1
 - WiFi access points broadcasting per-VLAN SSIDs (post-housing-change)
-- Internal DNS records via OPNsense Unbound for lab hostnames under `teejlab.dev`
-- Public Let's Encrypt certs for internal services via DNS-01
-- Site-to-site or VPN access for cross-subnet connectivity from remote locations
+
+_(Done since first draft — see Migration status: internal DNS via Unbound, Let's Encrypt DNS-01 certs on the infra UIs, Tailscale remote access.)_
