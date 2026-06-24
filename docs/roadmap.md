@@ -218,6 +218,16 @@
 
 ---
 
+## Maintenance & backlog
+
+Cross-cutting tasks not tied to a single phase — done deliberately, as their own focused sessions.
+
+- [ ] **PVE 8 → 9 major upgrade** (Debian 12 → 13 base). *No urgency — 8.4 is supported.* Standalone session: run `pve8to9 --full` on each node and clear all warnings; take full PBS backups (incl. the OPNsense VM) first; upgrade **rolling, one node at a time**, keeping quorum and console access. Blast radius: rebooting teejhost2 drops OPNsense → whole-lab outage (and Tailscale) for the window, so plan a maintenance window. Write it up as a runbook. Follow the official Proxmox "Upgrade from 8 to 9" wiki for exact steps.
+- [ ] Confirm/clean up the second OPNsense WAN `192.168.8.x` address (VIP vs leftover).
+- [ ] Switch management onto VLAN 10 (firmware-permitting) — see naming/break-glass notes.
+
+---
+
 ## Success Metrics
 
 | Metric | Target | Purpose |
