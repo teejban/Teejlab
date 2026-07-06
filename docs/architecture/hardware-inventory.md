@@ -78,7 +78,7 @@ Both run **Proxmox VE 8.4.19**. Cluster totals: **12 threads** (2× Intel i5-840
 - **PoE**: No
 - **Port assignments**:
   - Port 2 → teejlab-pi-nas (trunk: untagged VLAN 1, tagged VLAN 10)
-  - Port 3 → teejhost1 (trunk: untagged VLAN 1, tagged VLAN 10)
+  - Port 3 → teejhost1 (hypervisor trunk: untagged VLAN 1, tagged 10/20/30/40/50 — full VLAN set, symmetric with Port 5, for VM placement + migration)
   - Port 4 → travel router uplink (legacy flat network, kept during transition)
   - Port 5 → teejhost2 (trunk to OPNsense: untagged VLAN 1, tagged 10/20/30/40/50)
   - Port 6 → VLAN 30 access port (lab/test clients, PVID 30)

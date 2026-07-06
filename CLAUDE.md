@@ -30,7 +30,7 @@ Project handle: `teejlab` (also the owned domain `teejlab.dev`).
 
 - **TP-Link TL-SG108E** managed switch (8 ports, 802.1Q VLANs). Port assignments:
   - Port 2 → teejlab-pi-nas (trunk: untagged VLAN 1 + tagged VLAN 10)
-  - Port 3 → teejhost1 (trunk: untagged VLAN 1 + tagged VLAN 10)
+  - Port 3 → teejhost1 (hypervisor trunk: untagged VLAN 1 + tagged 10/20/30/40/50 — full VLAN set, symmetric with Port 5)
   - Port 4 → travel router uplink (kept for legacy flat network during transition)
   - Port 5 → teejhost2 (trunk port to OPNsense)
   - Port 6 → VLAN 30 access (lab test port)

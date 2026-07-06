@@ -35,7 +35,7 @@ OPNsense acts as the lab's actual router: handling DHCP, DNS, inter-VLAN routing
 +------------------------------------------------------+
 | TP-Link TL-SG108E managed switch                     |
 | Port 2: teejlab-pi-nas (trunk: untagged 1, tagged 10)|
-| Port 3: teejhost1 (trunk: untagged 1, tagged 10)     |
+| Port 3: teejhost1 (hypervisor trunk, all VLANs)      |
 | Port 4: Travel router uplink (legacy flat network)   |
 | Port 5: teejhost2 enp2s0f0 (trunk to OPNsense LAN)   |
 | Port 6: VLAN 30 access port (test/lab clients)       |
@@ -67,7 +67,8 @@ OPNsense holds `.1` on each subnet and acts as gateway, DHCP server, and DNS res
 ## Switch port plan
 
 - **Port 5 (trunk to OPNsense)**: untagged VLAN 1 (legacy), tagged VLANs 10, 20, 30, 40, 50
-- **Port 3 (teejhost1)** and **Port 2 (teejlab-pi-nas)**: trunks — untagged VLAN 1 (PVID 1, for flat/cluster traffic), tagged VLAN 10 (management)
+- **Port 3 (teejhost1)**: hypervisor trunk — untagged VLAN 1 (PVID 1), tagged VLANs 10, 20, 30, 40, 50. Carries the full VLAN set (symmetric with Port 5) so any VM can live on any VLAN and migrate between nodes without a switch change.
+- **Port 2 (teejlab-pi-nas)**: trunk — untagged VLAN 1 (PVID 1), tagged VLAN 10 only. Single-purpose appliance (NAS + QDevice), so it's kept minimal rather than a full trunk.
 - **Port 6 (VLAN 30 access)**: untagged VLAN 30, PVID 30
 - Additional access ports will be configured per VLAN as devices migrate from the flat network
 
