@@ -64,6 +64,7 @@
 - [ ] Ansible inventory structure (hosts by role, VLAN, environment)
 - [ ] First IaC resource: OPNsense VM (via Terraform)
 - [ ] First playbook: OPNsense baseline configuration (via Ansible)
+- [ ] Ansible `base` role — codify the VM baseline standard (hand-authored spec already written: `docs/runbooks/vm-baseline-setup.md`)
 - [ ] CI/CD pre-check: Terraform plan runs on PR
 - [ ] Documentation: "How to provision a new VM" guide
 
@@ -92,7 +93,14 @@
 **Goal**: Deploy containerized services to learn container fundamentals before moving to Kubernetes.
 
 ### Deliverables
-- [ ] Docker VM deployed via IaC
+
+Hand-built track first (build-then-codify per [ADR-0010](decisions/0010-docker-host-build-then-codify.md)),
+then reproduce via IaC:
+
+- [x] `docker1` VM provisioned by hand on VLAN 20 SERVERS (`10.0.20.2`) — precursor to the IaC deploy
+- [x] VM baseline standard established + applied to `docker1` — three pillars (Communicate / Report metrics / Administer securely): key-only SSH + sshd hardening, `unattended-upgrades`, `qemu-guest-agent`, `prometheus-node-exporter`, cross-VLAN internal DNS. Spec for the future Ansible `base` role — see `docs/runbooks/vm-baseline-setup.md`
+- [ ] Docker Engine + first workload on `docker1` (hand-built role — Traefik reverse proxy for `*.teejlab.dev` auto-TLS; `docs/runbooks/docker-host-setup.md`)
+- [ ] Docker VM deployed via IaC (codify the hand-built build)
 - [ ] First service containerized: e.g., Portainer, reverse proxy, monitoring
 - [ ] Docker registry (local or Docker Hub)
 - [ ] Basic compose file (docker-compose.yml in git)

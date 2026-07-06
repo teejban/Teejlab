@@ -155,6 +155,12 @@ When writing or editing documentation in this repo:
 - Branch from `main`, PR back, even when working solo (builds interview-friendly habits)
 - Sign commits (SSH or GPG) — the green "Verified" badge matters for portfolio visibility
 - No secrets in the repo, ever. Use sops + age for anything sensitive.
+- **Roadmap-driven pushes.** `docs/roadmap.md` is the source of truth for progress. Commit
+  freely at logical stopping points, but **push to origin when a change crosses a roadmap item
+  off** (`[ ]` → `[x]`) — that same commit updates the checkbox. If work segues into territory
+  the roadmap doesn't yet cover, **reorganize the roadmap to include it** as part of that commit,
+  then cross it off. The roadmap must always stay a faithful map of reality. Between milestones,
+  commits stay local unless explicitly asked to push.
 
 ## Lessons learned (running list — add to this as we go)
 
