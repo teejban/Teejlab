@@ -4,6 +4,13 @@
 
 **Success Criteria**: Automated, reproducible, well-documented infrastructure that looks professional on a portfolio.
 
+**Capstone**: a single portfolio site (`teejlab.dev`) where a recruiter or hiring manager can
+**launch** my resume site *and* the full MSP stack, watch each build happen live (pipeline
+steps, resources created, logs, timings), then use what they launched and its monitoring
+dashboard. Every earlier phase is a building block for it: IaC creates the infrastructure,
+config management configures it, containers package it, CI/CD runs the launch, and
+observability is what the visitor watches. See [Phase 7](#phase-7-portfolio-launch-platform-capstone).
+
 ---
 
 ## Phase 1: Network Foundation ⭐ CURRENT
@@ -187,9 +194,10 @@ then reproduce via IaC:
 
 ---
 
-## Phase 6: MSP Stack + Observability + Resume Site
+## Phase 6: MSP Stack + Observability
 
-**Goal**: Deploy a realistic set of services that look impressive on a portfolio.
+**Goal**: Deploy a realistic set of services that look impressive on a portfolio, built to be
+**reproducible from code**, since Phase 7 launches it on demand.
 
 ### Deliverables
 - [ ] Monitoring stack: Prometheus + Grafana
@@ -198,7 +206,7 @@ then reproduce via IaC:
 - [ ] Lab mail server (Mailcow on `lab.teejlab.dev`) — internal alerts/notices + user/app testing; **no public inbound** (per [ADR-0007](decisions/0007-hybrid-cloud-edge-vs-home-compute.md))
 - [ ] Outbound mail relay via **Amazon SES** (the cloud trust-edge) + SPF/DKIM/DMARC on the subdomain via Cloudflare
 - [ ] Backup automation: Proxmox Backup Server + retention policy
-- [ ] Ephemeral resume website (spun up on-demand, deployed by CI/CD)
+- [ ] MSP stack (Gitea, Tactical RMM, ticketing, BookStack, Uptime Kuma) deployable end-to-end from a single pipeline run, with no manual steps (the prerequisite for visitor launches)
 - [ ] GitOps documentation + architecture diagram
 - [ ] "Incident response runbook" (example: disk full, node down)
 
@@ -210,19 +218,73 @@ then reproduce via IaC:
 5. Configure AlertManager for incident escalation
 6. Stand up the mail server (Mailcow) on `lab.teejlab.dev`; relay outbound through Amazon SES; add SPF/DKIM/DMARC; point lab services' SMTP at it
 7. Document disaster recovery (restore from PBS)
-8. Build resume site (static HTML or lightweight Node app)
-9. Deploy via CI/CD workflow
+8. Package the MSP stack so one pipeline run brings it up from nothing
 
 ### Risks
-- **Over-engineering**: Build too much, run out of time. Mitigation: prioritize (monitoring > logging > resume site).
-- **Resume site as distraction**: Spend too much time on appearance. Mitigation: keep it simple (HTML + CSS).
+- **Over-engineering**: Build too much, run out of time. Mitigation: prioritize (monitoring > logging > mail).
 
 ### Definition of Done
 - Grafana dashboards reflect real infrastructure health
 - Alert fires (e.g., high CPU) and fires Slack notification
 - Logs are centralized and searchable
-- Resume site accessible via public URL (DMZ VLAN 50)
+- MSP stack comes up from a clean slate with one pipeline run
 - All deployment documented in architecture diagrams + README
+
+---
+
+## Phase 7: Portfolio Launch Platform (capstone)
+
+**Goal**: One public site where a visitor launches the **resume site** or the **MSP stack**,
+watches it build in real time, then gets into what they launched and its dashboard.
+
+**Why**: It shows the skills working instead of listing them. It's also the design that
+everything earlier feeds into: one pipeline pattern, pointed at two targets.
+
+### Design
+
+One launch pipeline (GitHub Actions → Terraform → Ansible/containers → health checks), one
+observability stack, two products:
+
+| | Resume site | MSP stack |
+|---|---|---|
+| Launched by | Visitor | Visitor |
+| Runs in | AWS (Azure added later for multi-cloud) | **Open decision**: leaning AWS for visitor copies, with the home lab running the permanent stack + monitoring backend |
+| Visitor gets | Live build view → the site URL | Live build view → service logins + Grafana dashboard |
+| Lifetime | Auto-teardown (≈30–60 min) | Auto-teardown (≈30–60 min) |
+
+**Open decision: where do visitor-launched MSP stacks run?**
+- **AWS (leaning)**: keeps anonymous launches off the home network entirely (consistent with
+  [ADR-0007](decisions/0007-hybrid-cloud-edge-vs-home-compute.md): public, trust-requiring
+  things live in the cloud). Shows one pipeline deploying to cloud *and* on-prem. Costs a few
+  cents per launch with small, short-lived instances.
+- **Home lab (DMZ VLAN 50 via Cloudflare Tunnel)**: free, and shows the real hardware, but puts
+  strangers' launches on hardware on the home network, and is limited by the shared-housing uplink.
+
+Record the outcome as an ADR before building.
+
+### Deliverables
+- [ ] Portfolio site on `teejlab.dev`: resume/about, Launch buttons, live launch view, "how it works" (architecture + runbooks + this repo)
+- [ ] Launch API: Launch button → pipeline run (GitHub Actions `workflow_dispatch` or equivalent), returns a launch ID
+- [ ] Live launch view: streams pipeline steps, resources created, logs and timings for that launch ID
+- [ ] Resume target: Terraform + deploy to AWS, with teardown
+- [ ] MSP stack target: same pipeline, deployed per the open decision above, with teardown
+- [ ] Per-launch dashboard: Grafana view scoped to the visitor's launch
+- [ ] Azure as a second target for the resume (multi-cloud)
+- [ ] ADR: where visitor launches run + abuse/cost controls
+
+### Guardrails (required before going public)
+- **Automatic teardown** of every launch (TTL ≈30–60 min), plus a sweeper that removes anything orphaned
+- **Concurrency cap** (1–2 live launches) + per-visitor rate limiting
+- **Bot protection** on the Launch button (Cloudflare Turnstile)
+- **Hard cost ceiling**: AWS Budgets alarm + action; small/spot instances only
+- **Throwaway credentials per launch**, shown only to that visitor; nothing reused across launches
+- **Isolation**: launched stacks can't reach the home lab, its management VLAN, or each other
+
+### Definition of Done
+- A stranger can click Launch, watch the build live, and log into what they launched within a few minutes
+- Every launch tears itself down, and nothing is left running or billing afterwards (verified)
+- Spend stays under the budget cap under abuse (tested)
+- The whole platform is described in the repo: architecture, ADR, runbook
 
 ---
 

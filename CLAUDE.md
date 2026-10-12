@@ -13,6 +13,7 @@ Project handle: `teejlab` (also the owned domain `teejlab.dev`).
 1. Land a DevOps job. The repo and the homelab itself are portfolio material.
 2. Learn the full DevOps stack hands-on: IaC, config management, containers, orchestration, CI/CD, GitOps, observability.
 3. Build something real and useful for myself in the process — not just demo workloads.
+4. **Portfolio capstone, the launch platform**: one site (`teejlab.dev`) where recruiters/hiring managers can **launch** my resume site *and* the MSP stack, watch each build live (pipeline steps, resources, logs, timings), then use what they launched and its dashboard. One pipeline pattern, two targets; every phase is a building block for it. Cloud: **AWS first** (I'm ex-AWS and want to keep growing there), **Azure added later** for multi-cloud. Open decision: whether visitor-launched MSP stacks run in AWS (leaning) or the lab's DMZ. Public launches need hard guardrails (auto-teardown, concurrency caps, bot protection, budget ceiling, isolation). See `docs/roadmap.md` Phase 7.
 
 ## Hardware inventory
 
@@ -118,7 +119,7 @@ Rule of thumb: use the `teejlab-` prefix **only where there is no `teejlab.dev` 
 - Zammad or GLPI (ticketing)
 - BookStack (documentation / runbooks)
 - Uptime Kuma (simple monitoring)
-- A public-facing portfolio site behind Cloudflare Tunnel, ideally with an interactive demo (ephemeral container spawned per visitor) — long-term goal
+- The portfolio launch platform (goal 4 above), with visitor-launchable resume + MSP stack. The capstone, Phase 7 of the roadmap.
 
 ## Repo structure
 
