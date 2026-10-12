@@ -262,6 +262,19 @@ observability stack, two products:
 
 Record the outcome as an ADR before building.
 
+### Build order: resume first
+
+The resume is built first and polished, end to end. The MSP stack then reuses the same pipeline,
+live view and guardrails, so it's mostly repetition with more services. Each resume milestone is
+something working and demonstrable on its own:
+
+- [ ] **R1: Deploy by hand.** Resume site in AWS via Terraform from my machine; `apply` brings it up, `destroy` removes it cleanly
+- [ ] **R2: Deploy from CI.** A GitHub Actions workflow runs the same Terraform (`workflow_dispatch`), authenticating to AWS via **OIDC** (no long-lived keys in GitHub)
+- [ ] **R3: Launch button.** The site's button calls a small API that triggers the workflow and returns a launch ID
+- [ ] **R4: Live view.** The page shows that launch's steps, logs, resources created and timings as they happen
+- [ ] **R5: Guardrails.** TTL auto-teardown + orphan sweeper, concurrency cap, Turnstile, AWS Budgets ceiling, all tested by trying to abuse it
+- [ ] **R6: Polish.** Design, the "how it works" page, architecture diagram, write-up. Then point the same pipeline at Azure.
+
 ### Deliverables
 - [ ] Portfolio site on `teejlab.dev`: resume/about, Launch buttons, live launch view, "how it works" (architecture + runbooks + this repo)
 - [ ] Launch API: Launch button → pipeline run (GitHub Actions `workflow_dispatch` or equivalent), returns a launch ID
@@ -315,11 +328,12 @@ Cross-cutting tasks not tied to a single phase — done deliberately, as their o
 ---
 
 ## Current Status
-- **Phase**: 1 (Network Foundation) — nearly complete; firewall hardening is the last big item. Bridging early into Phase 3 (Docker) for the reverse-proxy auto-TLS layer.
+- **Focus**: **Phase 7, resume track first.** Build the cloud resume launcher end to end and polish it. It's the smallest complete version of the capstone (one pipeline, one target, one live view), it doesn't depend on any unfinished lab work, and it's the template the MSP stack will reuse.
+- **Lab track (parallel, lower priority)**: Phase 1 is nearly complete (firewall hardening is the last big item); Docker host + reverse proxy on docker1 is next there; then the lab mail server.
 - **Blockers**: None
-- **Next Immediate Task**: Stand up the first **Docker host + reverse proxy** (Caddy/Traefik) for automatic TLS on services (also fronts the NAS UI), then the **firewall hardening pass**, then the lab mail server.
+- **Next Immediate Task**: Resume launcher, milestone R1 (static resume deployed to AWS with Terraform from my machine, then torn down).
 
 ---
 
 **Last Updated**: 2026-10-11  
-**Revision**: 0.9
+**Revision**: 0.10
