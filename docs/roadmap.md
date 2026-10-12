@@ -231,8 +231,12 @@ then reproduce via IaC:
 Cross-cutting tasks not tied to a single phase — done deliberately, as their own focused sessions.
 
 - [ ] **PVE 8 → 9 major upgrade** (Debian 12 → 13 base). *No urgency — 8.4 is supported.* Standalone session: run `pve8to9 --full` on each node and clear all warnings; take full PBS backups (incl. the OPNsense VM) first; upgrade **rolling, one node at a time**, keeping quorum and console access. Blast radius: rebooting teejhost2 drops OPNsense → whole-lab outage (and Tailscale) for the window, so plan a maintenance window. Write it up as a runbook. Follow the official Proxmox "Upgrade from 8 to 9" wiki for exact steps.
-- [ ] Confirm/clean up the second OPNsense WAN `192.168.8.x` address (VIP vs leftover).
+- [ ] Confirm/clean up the second OPNsense WAN `192.168.8.x` address (VIP vs leftover). An ARP sweep shows two *different* Proxmox MACs (`.5`, `.161`), so it's not a VIP; find which VM owns the second.
 - [ ] Switch management onto VLAN 10 (firmware-permitting) — see naming/break-glass notes.
+- [x] **Pi NAS DR rebuild** (2026-10-11): the NAS didn't survive a cold start. Rebuilt on a new card (OMV 8), ZFS pool force-imported intact, config restored via `omv-rpc`, QDevice re-linked (3/3 votes). Write-up: `docs/runbooks/pi-nas-dr-rebuild.md`; operating doc: `docs/runbooks/lab-cold-start.md`.
+- [ ] NAS hardening follow-ups: root SSH → key-only; persistent journal (writecache/flashmemory left no logs from the failed boots); scheduled OMV config backup + pre-flashed spare card; console access (micro-HDMI or Debug Probe).
+- [x] OPNsense cert renewed after expiring while the lab was off (re-imported via `lecert.php --mode import`; valid to 2027-01-09). PBS datastore and `teejlab-share` CIFS confirmed back online after the rebuild.
+- [ ] Confirm the "Restart OPNsense Web UI" automation is attached to the `edge.teejlab.dev` ACME cert; turn OPNsense SSH password login back off (keys only).
 
 ---
 
@@ -255,5 +259,5 @@ Cross-cutting tasks not tied to a single phase — done deliberately, as their o
 
 ---
 
-**Last Updated**: 2026-06-23  
-**Revision**: 0.8
+**Last Updated**: 2026-10-11  
+**Revision**: 0.9

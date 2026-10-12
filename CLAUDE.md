@@ -24,12 +24,12 @@ Project handle: `teejlab` (also the owned domain `teejlab.dev`).
 
 ### Storage
 
-- **teejlab-pi-nas** — Raspberry Pi 5 (8GB), SATA HAT with 4 SSDs, ZFS pool `teejlab-tank` (~1.32 TiB). Runs OpenMediaVault 7. Doubles as cluster QDevice and SMB target for Proxmox + other clients. NIC `eth0`. IP `10.0.10.4` (MGMT VLAN 10, tagged `eth0.10`); flat IP removed.
+- **nas** (formerly `teejlab-pi-nas`) — Raspberry Pi 5 (8GB), Radxa Penta SATA HAT (12V barrel jack powers HAT + Pi; PCIe at default Gen 2) with 4× T-FORCE 512 GB SSDs, ZFS raidz1 pool `teejlab-tank` (~1.32 TiB usable). Boots from a high-endurance microSD. Runs **OpenMediaVault 8** on Raspberry Pi OS Lite (trixie), rebuilt 2026-10 after a cold-start failure (see `docs/runbooks/pi-nas-dr-rebuild.md`). Cluster QDevice (`corosync-qnetd`), SMB target for Proxmox + clients, NFS datastore for PBS. NIC **`end0`** (not `eth0`). IP `10.0.10.4` (MGMT VLAN 10, tagged `end0.10`); `end0` has no IPv4.
 
 ### Networking
 
-- **TP-Link TL-SG108E** managed switch (8 ports, 802.1Q VLANs). Port assignments:
-  - Port 2 → teejlab-pi-nas (trunk: untagged VLAN 1 + tagged VLAN 10)
+- **TP-Link TL-SG108E** managed switch (8 ports, 802.1Q VLANs). Management IP `192.168.8.156` on VLAN 1, reachable only from the flat network (not via Tailscale). Port assignments:
+  - Port 2 → nas (trunk: untagged VLAN 1 + tagged VLAN 10)
   - Port 3 → teejhost1 (hypervisor trunk: untagged VLAN 1 + tagged 10/20/30/40/50 — full VLAN set, symmetric with Port 5)
   - Port 4 → travel router uplink (kept for legacy flat network during transition)
   - Port 5 → teejhost2 (trunk port to OPNsense)
@@ -78,7 +78,7 @@ Rule of thumb: use the `teejlab-` prefix **only where there is no `teejlab.dev` 
 - **VLANs**: ALL CAPS short names (`MGMT`, `SERVERS`, etc.) matching their internal purpose
 - **IP scheme**: `10.0.<vlan-id>.0/24`, OPNsense as `.1`, DHCP pools start at `.10`
 
-> Migration note: `teejlab-pi-nas` predates this convention (it's DNS-addressable, so would be `nas` → `nas.teejlab.dev`). Rename is low-priority; leave until convenient.
+> Migration note: the Pi NAS was renamed `teejlab-pi-nas` → `nas` (done; confirmed in the 2026-10 rebuild).
 
 ## Key constraints (always relevant)
 
@@ -95,7 +95,8 @@ Rule of thumb: use the `teejlab-` prefix **only where there is no `teejlab.dev` 
 - OPNsense routing, DHCP per VLAN, basic firewall
 - Switch with 802.1Q VLANs configured
 - End-to-end DHCP validated on LAB VLAN
-- All hosts migrated to MGMT VLAN 10 with flat IPs removed: teejhost1 (`10.0.10.2`), teejhost2 (`10.0.10.3`), teejlab-pi-nas (`10.0.10.4`)
+- All hosts migrated to MGMT VLAN 10 with flat IPs removed: teejhost1 (`10.0.10.2`), teejhost2 (`10.0.10.3`), nas (`10.0.10.4`)
+- Operating docs: cold-start order, health check and every device's break-glass path in `docs/runbooks/lab-cold-start.md`; troubleshooting cheat sheet in `docs/runbooks/linux-troubleshooting.md`
 - Corosync on a single VLAN 10 link (flat `ring0` removed); QDevice on `10.0.10.4`; CIFS storage repointed to `10.0.10.4`
 - Tailscale on OPNsense as a subnet router advertising `10.0.10.0/24` — remote web + SSH access to the lab from anywhere, no port forwarding. Decouples management from the flat net.
 - **Flat-net migration complete** — nothing in the lab uses VLAN 1. VLAN 1 is intentionally kept on the switch as a break-glass recovery network (the Easy Smart switch's own management IP lives there); not deprecated by design.
@@ -194,3 +195,15 @@ The 802.1Q VLAN config form won't accept a new VLAN unless at least one port is 
 
 ### TP-Link Easy Smart switches don't auto-save
 Apply makes changes live in RAM; Save Config (under System Tools) commits to flash. Without the explicit Save, a reboot wipes the config. Confirmed by rebooting after each major change and verifying the config persists.
+
+### OMV's interface name must match the real NIC, or the first apply wipes the network
+On a fresh OMV 8 install (Raspberry Pi OS trixie), the port is `end0`, but the OMV install script left an interface entry for `eth0`. The first `applyChanges` wrote netplan for a device that doesn't exist, removed the working config, and took the box offline. On any new OMV install, compare `sudo omv-confdbadm read conf.system.network.interface` against `ip -br a` **before** the first apply. Console-free rescue: append `ip=<addr>::<gw>:<mask>:<host>:eth0:off` to `/boot/firmware/cmdline.txt` (FAT, editable from any PC). The kernel configures the port before userspace starts. See `docs/runbooks/lab-cold-start.md`.
+
+### Don't run a network apply inside the session it reconfigures
+An OMV apply (or any network restart) run inside an SSH session can drop that session and kill itself halfway. That left `end0.10` half-created. Run it detached: `sudo systemd-run --unit=<name> omv-salt deploy run systemd-networkd`. Or run it from a second path that the change doesn't touch, such as a node on the same subnet.
+
+### A VLAN-only parent NIC stalls boot for 2 minutes via wait-online
+With `end0` set to no IPv4 (it only carries `end0.10`), `systemd-networkd-wait-online` waits for it to come "online," never sees it, times out at 2 min and fails (`degraded`). Everything after `network-online.target` (web UI, SMB, NFS) starts late. Diagnosed with `systemd-analyze critical-chain` (a gap from `@6s` to `@2min 3s`). Fix: a drop-in setting `ExecStart=/usr/lib/systemd/systemd-networkd-wait-online --any`.
+
+### Install ISOs on NAS storage make every VM depend on the NAS
+Proxmox won't start a VM whose CD sits on offline storage, even if it never boots from it. PBS's install ISO stayed attached from `teejlab-share` (the Pi), so with the Pi down, PBS wouldn't start. Detach the CD after installing (`qm set <vmid> --ide2 none,media=cdrom`).

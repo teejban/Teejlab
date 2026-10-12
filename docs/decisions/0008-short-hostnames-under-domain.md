@@ -33,7 +33,7 @@ parsed as host `teejlab` in domain `pbs`).
 - Some existing names don't match yet and will be renamed as convenient:
   - `teejlab.opnsense` (VM) → `opnsense`
   - the rebuilt PBS uses `pbs` from the start
-  - `teejlab-pi-nas` → `nas` eventually (low priority; it's a working OMV host)
+  - `teejlab-pi-nas` → `nas`: done (confirmed in the 2026-10 rebuild)
 - A naming decision is now documented, so future services follow one rule instead of drifting.
 
 ## Alternatives considered

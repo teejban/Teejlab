@@ -72,6 +72,27 @@ PBS isn't in the Proxmox cluster, so it gets its own account + plugin:
   renewal automation (or renewals don't apply), and whitelist the hostname for the rebind check.
 - Access infra by **IP** to recover when a hostname/cert/rebind issue locks you out of the FQDN
   (IPs aren't `.dev`, so the browser lets you click through).
+- **A lab that's switched off can't renew.** The OPNsense cert expired 2026-09-20 while the lab
+  was off. The Proxmox/PBS certs survived only because they happened to renew before shutdown.
+  After any long power-off, check every UI's cert first (`docs/runbooks/lab-cold-start.md`).
+- **Click renew once.** The renew button gives no feedback, so it's easy to click twice. On
+  2026-10-11 two runs overlapped: run 1 got the cert (`Cert success.`, files written), run 2
+  failed finalising the same order (`orderNotReady … Order's status ("valid")`), and the store
+  ended up still holding the *old* cert. Most likely run 2 wrote back a stale config over run
+  1's import. Symptom: the log says "successfully renewed", but System → Trust still shows the
+  old dates and the GUI serves the old cert even after `configctl webgui restart`.
+- **Fix: re-import the cert acme.sh already has on disk.** No new issuance needed. Check the file,
+  then run the plugin's import with the cert's **config UUID** (not the `id` used in the folder
+  names; passing that crashes with an empty `LeAccount('')`):
+  ```sh
+  # from the PC; the VM console can't paste, and the root shell mangles pastes (0~ / 1~)
+  ssh root@10.0.10.1 "openssl x509 -noout -dates -in /var/etc/acme-client/certs/<id>/cert.pem"
+  ssh root@10.0.10.1 'grep -A3 "<certificate uuid=" /conf/config.xml'     # uuid + id + name
+  ssh root@10.0.10.1 "/usr/local/opnsense/scripts/OPNsense/AcmeClient/lecert.php --mode import --cert <uuid>"
+  ssh root@10.0.10.1 "configctl webgui restart"
+  ```
+  Plugin action names live in `/usr/local/opnsense/service/conf/actions.d/actions_acmeclient.conf`.
+  Look them up instead of guessing.
 
 ## Not yet done (future)
 

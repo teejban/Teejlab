@@ -1,5 +1,10 @@
 # Runbook: Migrate teejlab-pi-nas management onto MGMT VLAN 10
 
+> **Historical (June 2026, OMV 7).** The Pi was rebuilt in 2026-10 as `nas` on OMV 8, where
+> the port is named `end0` (VLAN `end0.10`), and the VLAN was set up through `omv-rpc`. See
+> [pi-nas-dr-rebuild.md](pi-nas-dr-rebuild.md). The approach (add, verify from inside the
+> VLAN, then cut over) still applies.
+
 ## Summary
 
 teejlab-pi-nas (Raspberry Pi 5, OpenMediaVault 7) was reached on the flat network at

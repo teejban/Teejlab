@@ -41,6 +41,11 @@ qm start 101
 The **`tag=10`** on the NIC is what makes it VLAN-10-native. Empty `scsi0` falls through to the
 CD, so it boots the installer.
 
+> **Detach the ISO after installing** (`qm set 101 --ide2 none,media=cdrom`, or Hardware →
+> CD/DVD → *Do not use any media*). Left attached, the ISO on `teejlab-share` makes the VM
+> depend on the Pi: Proxmox won't start a VM whose CD sits on offline storage. That's how PBS
+> failed to start during the 2026-10 cold start ([pi-nas-dr-rebuild.md](pi-nas-dr-rebuild.md)).
+
 ## Install (console)
 
 Open the VM console and run the PBS installer:

@@ -11,7 +11,7 @@ OPNsense acts as the lab's actual router: handling DHCP, DNS, inter-VLAN routing
 | Role        | Device                          | Notes                                              |
 |-------------|---------------------------------|----------------------------------------------------|
 | Hypervisor  | Lenovo ThinkCentre M920q ×2     | `teejhost1` (1 NIC), `teejhost2` (4 NICs)          |
-| Storage     | Raspberry Pi 5 + 4-bay SATA HAT | `teejlab-pi-nas`, ZFS pool `teejlab-tank` (~1.3 TB)|
+| Storage     | Raspberry Pi 5 + Penta SATA HAT | `nas`, ZFS raidz1 pool `teejlab-tank` (~1.3 TB)    |
 | Switch      | TP-Link TL-SG108E (Easy Smart)  | 8-port, 802.1Q VLAN capable                        |
 | Upstream    | GL-iNet GL-A1300 (Slate Plus)   | Travel router, WiFi-as-WAN to landlord's network   |
 
@@ -34,7 +34,7 @@ OPNsense acts as the lab's actual router: handling DHCP, DNS, inter-VLAN routing
 
 +------------------------------------------------------+
 | TP-Link TL-SG108E managed switch                     |
-| Port 2: teejlab-pi-nas (trunk: untagged 1, tagged 10)|
+| Port 2: nas (trunk: untagged 1, tagged 10)           |
 | Port 3: teejhost1 (hypervisor trunk, all VLANs)      |
 | Port 4: Travel router uplink (legacy flat network)   |
 | Port 5: teejhost2 enp2s0f0 (trunk to OPNsense LAN)   |
@@ -42,13 +42,13 @@ OPNsense acts as the lab's actual router: handling DHCP, DNS, inter-VLAN routing
 | Ports 1, 7, 8: free                                  |
 +------------------------------------------------------+
 
-[teejhost1: 1 NIC]    [teejhost2: 4 NICs, hosts OPNsense]    [teejlab-pi-nas]
-                                                              (QDevice + SMB target)
+[teejhost1: 1 NIC]    [teejhost2: 4 NICs, hosts OPNsense]    [nas]
+                                                              (QDevice + SMB/NFS target)
 ```
 
 Both the travel router uplink to the switch *and* the direct WAN cable to OPNsense terminate on **teejhost2**. teejhost1 is a pure compute node (also hosting the PBS VM) connected only to the switch.
 
-All three nodes are now fully on **MGMT VLAN 10** (`10.0.10.2/3/4`), each via a tagged sub-interface on a single NIC over a trunked switch port; the flat IPs have been removed. Corosync and the QDevice also run on VLAN 10, so the cluster has no flat-net dependency. VLAN 1 is retained on the switch only as a break-glass recovery network.
+All three nodes are now fully on **MGMT VLAN 10** (`10.0.10.2/3/4`), each via a tagged sub-interface on a single NIC over a trunked switch port; the flat IPs have been removed. Corosync and the QDevice also run on VLAN 10, so the cluster has no flat-net dependency. VLAN 1 is retained on the switch only as a break-glass recovery network. The switch's own management IP (`192.168.8.156`) lives there, so it's reachable only from the flat network, not over Tailscale. See `docs/runbooks/lab-cold-start.md` for every device's break-glass path.
 
 ## VLAN scheme
 
@@ -68,7 +68,7 @@ OPNsense holds `.1` on each subnet and acts as gateway, DHCP server, and DNS res
 
 - **Port 5 (trunk to OPNsense)**: untagged VLAN 1 (legacy), tagged VLANs 10, 20, 30, 40, 50
 - **Port 3 (teejhost1)**: hypervisor trunk — untagged VLAN 1 (PVID 1), tagged VLANs 10, 20, 30, 40, 50. Carries the full VLAN set (symmetric with Port 5) so any VM can live on any VLAN and migrate between nodes without a switch change.
-- **Port 2 (teejlab-pi-nas)**: trunk — untagged VLAN 1 (PVID 1), tagged VLAN 10 only. Single-purpose appliance (NAS + QDevice), so it's kept minimal rather than a full trunk.
+- **Port 2 (nas)**: trunk — untagged VLAN 1 (PVID 1), tagged VLAN 10 only. Single-purpose appliance (NAS + QDevice), so it's kept minimal rather than a full trunk.
 - **Port 6 (VLAN 30 access)**: untagged VLAN 30, PVID 30
 - Additional access ports will be configured per VLAN as devices migrate from the flat network
 
@@ -144,7 +144,7 @@ TLS is **live** via Let's Encrypt **DNS-01** (Cloudflare). The four infra UIs �
 - [x] Per-VM trunks config on OPNsense VM NIC
 - [x] End-to-end VLAN validation: client on Port 6 -> 10.0.30.X DHCP lease via OPNsense
 - [x] teejhost1 management dual-homed onto MGMT VLAN 10 (`10.0.10.2`, tagged `vmbr0.10`)
-- [x] teejlab-pi-nas management dual-homed onto MGMT VLAN 10 (`10.0.10.4`, tagged `eth0.10` via OMV)
+- [x] teejlab-pi-nas management dual-homed onto MGMT VLAN 10 (`10.0.10.4`, tagged `eth0.10` via OMV). Since rebuilt (2026-10) as `nas` on OMV 8, now `end0.10`.
 - [x] teejhost2 management dual-homed onto MGMT VLAN 10 (`10.0.10.3`, tagged `vmbr0.10`)
 - [x] Corosync second link (`ring1`) on VLAN 10 added and verified — redundant over flat + VLAN 10
 - [x] Corosync cutover: single link on VLAN 10 (`ring0` = `10.0.10.x`), flat ring removed (needed a rolling corosync restart — link address change isn't live-reloadable)
