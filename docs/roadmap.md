@@ -268,7 +268,8 @@ The resume is built first and polished, end to end. The MSP stack then reuses th
 live view and guardrails, so it's mostly repetition with more services. Each resume milestone is
 something working and demonstrable on its own:
 
-- [ ] **R1: Deploy by hand.** Resume site in AWS via Terraform from my machine; `apply` brings it up, `destroy` removes it cleanly
+- [ ] **R1a: Deploy by hand, on Proxmox.** Terraform (`bpg/proxmox`) clones an Ubuntu cloud-image template on VLAN 20; cloud-init applies the VM baseline, installs Docker and runs the resume container; `apply` brings it up, `destroy` removes it cleanly. It's the free, fast practice target, and it also covers Phase 2 (first Terraform) and Phase 3 (Docker).
+- [ ] **R1b: Same, on AWS.** Swap the provider: the same container on EC2 via Terraform. Same `apply`/`destroy` loop.
 - [ ] **R2: Deploy from CI.** A GitHub Actions workflow runs the same Terraform (`workflow_dispatch`), authenticating to AWS via **OIDC** (no long-lived keys in GitHub)
 - [ ] **R3: Launch button.** The site's button calls a small API that triggers the workflow and returns a launch ID
 - [ ] **R4: Live view.** The page shows that launch's steps, logs, resources created and timings as they happen
@@ -331,7 +332,7 @@ Cross-cutting tasks not tied to a single phase — done deliberately, as their o
 - **Focus**: **Phase 7, resume track first.** Build the cloud resume launcher end to end and polish it. It's the smallest complete version of the capstone (one pipeline, one target, one live view), it doesn't depend on any unfinished lab work, and it's the template the MSP stack will reuse.
 - **Lab track (parallel, lower priority)**: Phase 1 is nearly complete (firewall hardening is the last big item); Docker host + reverse proxy on docker1 is next there; then the lab mail server.
 - **Blockers**: None
-- **Next Immediate Task**: Resume launcher, milestone R1 (static resume deployed to AWS with Terraform from my machine, then torn down).
+- **Next Immediate Task**: Resume launcher, milestone **R1a**: resume container deployed to **Proxmox** with Terraform from my machine, then torn down. Prerequisites: a least-privilege Proxmox API token for Terraform, an Ubuntu cloud-image template, and Terraform installed.
 
 ---
 
