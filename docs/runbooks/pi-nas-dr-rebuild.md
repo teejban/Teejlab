@@ -317,7 +317,7 @@ safe.
 - [ ] Reboot test confirming the `wait-online` fix (services up in seconds, `running` not `degraded`)
 - [ ] Tighten Pi root SSH to key-only (`sshd -T` shows `permitrootlogin yes`; root has no password, so it's key-only in practice, but make it explicit)
 - [x] PBS datastore and Proxmox `teejlab-share` CIFS storage back online (SMB password re-set, PBS VM started)
-- [ ] Renew/verify the OPNsense cert (expired 2026-09-20 while the lab was off)
+- [x] OPNsense cert renewed (expired 2026-09-20 while the lab was off; a double-click race lost the import. See the TLS runbook's lessons.)
 - [ ] Enable/verify `openmediavault-writecache` (flashmemory's OMV 8 successor), but make the journal persistent
 - [ ] OMV config backup on a schedule plus a pre-flashed spare card, so the next recovery is a restore, not a rebuild
 - [ ] Console access: micro-HDMI cable or Debug Probe
