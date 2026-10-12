@@ -264,6 +264,29 @@ Flags:            Quorate Qdevice
 
 Quorum held at every step: 2/3 before, 2/2 after `remove`, 3/3 after `setup`. VMs never noticed.
 
+## Reconnecting Proxmox storage
+
+Nothing needed removing and re-adding. The storage entries point at the same IP and share
+names, so they only needed their other end to work again:
+
+```
+teejlab-pbs: error fetching datastores - 500 Can't connect to pbs.teejlab.dev:8007 (No route to host)
+connection check for storage 'teejlab-share' failed - session setup failed: NT_STATUS_LOGON_FAILURE
+```
+
+- **`teejlab-share` (CIFS): `NT_STATUS_LOGON_FAILURE`.** The rebuilt NAS had no SMB password
+  for `teejadmin`. Samba keeps its own password database, separate from the Linux login, and
+  it doesn't survive an OS reinstall. Fix: read the password Proxmox already stores
+  (`/etc/pve/priv/storage/teejlab-share.pw`) and set the same one on the NAS with
+  `sudo smbpasswd -a teejadmin`. It went `active` within seconds.
+- **`teejlab-pbs`: `No route to host`.** On the same subnet, that means nothing was answering at
+  `10.0.10.6`: the PBS VM wasn't running. Clear the leftover ISO and start it
+  (`qm set 101 --ide2 none,media=cdrom`, `qm start 101`). PBS remounted its NFS datastore
+  from the NAS on boot and went `active`.
+
+The nodes don't use NFS at all. Only PBS does, so restricting the export to `10.0.10.6` was
+safe.
+
 ## What tripped me up / what I'd do differently
 
 - **I had no console.** Every hour of this was me inferring state from the outside: link
@@ -293,7 +316,7 @@ Quorum held at every step: 2/3 before, 2/2 after `remove`, 3/3 after `setup`. VM
 
 - [ ] Reboot test confirming the `wait-online` fix (services up in seconds, `running` not `degraded`)
 - [ ] Tighten Pi root SSH to key-only (`sshd -T` shows `permitrootlogin yes`; root has no password, so it's key-only in practice, but make it explicit)
-- [ ] Confirm the PBS datastore and Proxmox `teejlab-share` CIFS storage are online, and that SMB credentials match
+- [x] PBS datastore and Proxmox `teejlab-share` CIFS storage back online (SMB password re-set, PBS VM started)
 - [ ] Renew/verify the OPNsense cert (expired 2026-09-20 while the lab was off)
 - [ ] Enable/verify `openmediavault-writecache` (flashmemory's OMV 8 successor), but make the journal persistent
 - [ ] OMV config backup on a schedule plus a pre-flashed spare card, so the next recovery is a restore, not a rebuild

@@ -235,7 +235,7 @@ Cross-cutting tasks not tied to a single phase — done deliberately, as their o
 - [ ] Switch management onto VLAN 10 (firmware-permitting) — see naming/break-glass notes.
 - [x] **Pi NAS DR rebuild** (2026-10-11): the NAS didn't survive a cold start. Rebuilt on a new card (OMV 8), ZFS pool force-imported intact, config restored via `omv-rpc`, QDevice re-linked (3/3 votes). Write-up: `docs/runbooks/pi-nas-dr-rebuild.md`; operating doc: `docs/runbooks/lab-cold-start.md`.
 - [ ] NAS hardening follow-ups: root SSH → key-only; persistent journal (writecache/flashmemory left no logs from the failed boots); scheduled OMV config backup + pre-flashed spare card; console access (micro-HDMI or Debug Probe).
-- [ ] Verify the OPNsense cert renewed (it expired 2026-09-20 while the lab was off), and the PBS datastore + `teejlab-share` CIFS storage are online after the rebuild.
+- [ ] Verify the OPNsense cert renewed (it expired 2026-09-20 while the lab was off). PBS datastore and `teejlab-share` CIFS are confirmed back online after the rebuild.
 
 ---
 
