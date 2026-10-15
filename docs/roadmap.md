@@ -36,7 +36,7 @@ observability is what the visitor watches. See [Phase 7](#phase-7-portfolio-laun
 - [x] Flat network retired from the lab — VLAN 1 intentionally kept on the switch as a break-glass recovery net (the Easy Smart switch's own management lives there); not deprecating it by design
 - [x] Internal DNS via OPNsense Unbound for `<service>.teejlab.dev` — host overrides for `edge`/`teejhost1`/`teejhost2`/`nas`/`pbs`, every box pointed at `10.0.10.1`, split-horizon working (see `docs/runbooks/internal-dns.md`)
 - [x] TLS — real Let's Encrypt certs (DNS-01 / Cloudflare) on the four infra UIs (`teejhost1`/`teejhost2`/`pbs`/`edge`), auto-renewing (see `docs/runbooks/tls-letsencrypt-dns01.md`). Pending: reverse proxy + `*.teejlab.dev` wildcard for auto-TLS on services; NAS fronted via that proxy; switch is HTTP-only
-- [x] Tailscale on OPNsense advertising lab subnets (remote access) — subnet router advertising `10.0.10.0/24`, reachable web + SSH from off-network, + split-DNS so `*.teejlab.dev` resolves on the laptop
+- [x] Tailscale on OPNsense advertising lab subnets (remote access) — subnet router advertising `10.0.10.0/24` (now also VLANs 20 and 30), reachable web + SSH from off-network, + split-DNS so `*.teejlab.dev` resolves on the laptop
 - [x] Network documentation updated (`docs/architecture/network-architecture.md`)
 
 ### Technical Steps

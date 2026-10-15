@@ -154,7 +154,7 @@ TLS is **live** via Let's Encrypt **DNS-01** (Cloudflare). The four infra UIs �
 - [x] PBS rebuilt VLAN-10-native (`pbs`, `10.0.10.6`), datastore on the Pi via NFS — closed the last flat-net dependency
 - [x] Flat network retired from the lab — nothing in the cluster uses VLAN 1 anymore
 - [~] VLAN 1 intentionally kept on the switch as a break-glass recovery network (the Easy Smart switch's own management IP lives there); not deprecated by design
-- [x] Tailscale deployed on OPNsense for remote/cross-VLAN access (subnet router for `10.0.10.0/24`)
+- [x] Tailscale deployed on OPNsense for remote/cross-VLAN access (subnet router for `10.0.10.0/24`, `10.0.20.0/24`, `10.0.30.0/24`)
 - [x] Internal DNS — Unbound split-horizon for `*.teejlab.dev`; every host points at `10.0.10.1`
 - [x] TLS — real Let's Encrypt certs (DNS-01 / Cloudflare) on all four infra UIs, auto-renewing
 - [ ] Reverse proxy + `*.teejlab.dev` wildcard for automatic TLS on spun-up services

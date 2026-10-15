@@ -21,7 +21,17 @@ The baseline must be **complete and verified** first — this role assumes key-o
 OS, `qemu-guest-agent`, node_exporter, and the repo prerequisites (`ca-certificates curl gnupg`)
 are all in place. Don't start here until the baseline checklist is fully `[x]`.
 
-## 1. Docker Engine from Docker's official apt repo  `[ ]`
+## 0. Bring docker1 back after the shutdown  `[x]`  *(2026-10-15)*
+
+docker1 had been off since July. Before installing anything, the baseline was re-checked: still
+on `10.0.20.2` with its default route via `10.0.20.1`, and `ssh qemu-guest-agent
+prometheus-node-exporter unattended-upgrades` all `active`. Then `sudo apt update && sudo apt
+upgrade -y` (108 packages pending after three months). Key-only SSH did its job: logging in from
+teejhost1 got `Permission denied (publickey)`, because the only authorized key is the Windows
+dev box's, used via the `ssh docker1` alias in `~/.ssh/config`. VLAN 20 is reachable from the
+PC because Tailscale on OPNsense advertises `10.0.20.0/24` (plus 10 and 30).
+
+## 1. Docker Engine from Docker's official apt repo  `[x]`
 
 **Not the Ubuntu `snap`, not the `docker.io` distro package** — the official repo, so you get
 current Engine + the Compose v2 plugin and Docker's own update cadence. This is the concrete
@@ -36,12 +46,41 @@ Shape of it (understand each piece, don't just paste):
   docker-compose-plugin`.
 - Verify: `sudo docker run hello-world` and `docker compose version`.
 
-## 2. Post-install — run Docker without root  `[ ]`
+Done 2026-10-15 using the key in `/etc/apt/keyrings/docker.asc` (ASCII-armored, readable by
+`_apt`) and a `signed-by=` repo line written with `sudo tee`. Result:
+
+```
+Docker version 29.9.1, build dfc520d
+Docker Compose version v5.6.0
+  Installed: 5:29.9.1-1~ubuntu.22.04~jammy
+        500 https://download.docker.com/linux/ubuntu jammy/stable amd64 Packages
+```
+
+Service `active` + `enabled`; no competing `docker.io`/snap installs.
+
+## 2. Post-install — run Docker without root  `[x]`
 
 Add your user to the `docker` group so you don't `sudo` every command:
 `sudo usermod -aG docker teejadmin`, then **log out and back in** for the group to take effect.
 Security note to record: the `docker` group is **root-equivalent** (it can mount the host FS) —
 fine on a single-admin lab box, but worth stating honestly rather than glossing.
+
+`-a` in `usermod -aG` matters: without it `-G` *replaces* the group list and drops you out of
+`sudo`. Verified with `id -nG` showing `docker` and `docker run hello-world` working without sudo.
+
+## 2b. First containers, from `docker run` to Compose  `[x]`
+
+Learning steps before Traefik, each building on the last:
+
+1. `docker run -d --name web -p 8080:80 nginx`: detached container, named, host port 8080 →
+   container port 80. Reachable at `http://10.0.20.2:8080`; `docker logs web` shows the request.
+2. Swap in a bind mount, `-v ~/site:/usr/share/nginx/html:ro`, to serve my own page. You don't
+   edit a container; you `docker rm -f` it and run a new one. Edits to the host folder show up
+   live, because the content lives outside the container.
+3. The same thing as `~/web/compose.yaml`, with `restart: unless-stopped` added. Flags map to
+   keys (`--name` → `container_name`, `-p` → `ports`, `-v` → `volumes`, image → `image`; `-d`
+   moves to `docker compose up -d`). `docker compose config` validates the file first, like
+   `terraform validate`. `down` then `up -d` recreates it identically in seconds.
 
 ## 3. Internal DNS record  `[ ]`  *(OPNsense-side, not on the VM)*
 
@@ -76,3 +115,13 @@ Tie this to the lab-wide firewall hardening pass rather than deciding it in isol
 
 *(fill in as we go — the gotchas found building this by hand are the spec the Ansible `docker`
 role has to reproduce.)*
+
+- **Stopped containers aren't deleted.** Both `hello-world` runs sat in `docker ps -a` as
+  `Exited (0)`. Use `--rm` for throwaway runs, or `docker container prune` to clean up.
+- **Compose list items go on their own line.** `ports: - "8080:80"` on one line is invalid;
+  the `- "8080:80"` belongs on the next line, indented. `docker compose config` catches it.
+- **Bind-mount paths must still exist.** After moving `~/site` into `~/web/site`, a compose
+  file still pointing at `~/site` would mount a freshly created *empty* folder, and nginx
+  returns 403. Relative paths (`./site`) keep the project portable.
+- **`sudo echo … > /etc/file` fails.** The redirect runs in your unprivileged shell, so use
+  `| sudo tee`.
