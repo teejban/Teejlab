@@ -157,7 +157,7 @@ TLS is **live** via Let's Encrypt **DNS-01** (Cloudflare). The four infra UIs �
 - [x] Tailscale deployed on OPNsense for remote/cross-VLAN access (subnet router for `10.0.10.0/24`, `10.0.20.0/24`, `10.0.30.0/24`)
 - [x] Internal DNS — Unbound split-horizon for `*.teejlab.dev`; every host points at `10.0.10.1`
 - [x] TLS — real Let's Encrypt certs (DNS-01 / Cloudflare) on all four infra UIs, auto-renewing
-- [ ] Reverse proxy + `*.teejlab.dev` wildcard for automatic TLS on spun-up services
+- [x] Reverse proxy + `*.teejlab.dev` wildcard for automatic TLS on spun-up services: Traefik on docker1 (`10.0.20.2`), one wildcard cert via DNS-01; each proxied name is an Unbound override pointing at docker1
 - [ ] Firewall hardening pass (now safe — management fully on VLAN 10 + Tailscale)
 
 ## Future considerations

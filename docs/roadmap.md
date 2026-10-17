@@ -35,7 +35,7 @@ observability is what the visitor watches. See [Phase 7](#phase-7-portfolio-laun
 - [x] PBS rebuilt VLAN-10-native (`pbs`, `10.0.10.6`), datastore on the Pi via NFS — closed the last flat-net dependency (see `docs/runbooks/pbs-rebuild.md`)
 - [x] Flat network retired from the lab — VLAN 1 intentionally kept on the switch as a break-glass recovery net (the Easy Smart switch's own management lives there); not deprecating it by design
 - [x] Internal DNS via OPNsense Unbound for `<service>.teejlab.dev` — host overrides for `edge`/`teejhost1`/`teejhost2`/`nas`/`pbs`, every box pointed at `10.0.10.1`, split-horizon working (see `docs/runbooks/internal-dns.md`)
-- [x] TLS — real Let's Encrypt certs (DNS-01 / Cloudflare) on the four infra UIs (`teejhost1`/`teejhost2`/`pbs`/`edge`), auto-renewing (see `docs/runbooks/tls-letsencrypt-dns01.md`). Pending: reverse proxy + `*.teejlab.dev` wildcard for auto-TLS on services; NAS fronted via that proxy; switch is HTTP-only
+- [x] TLS — real Let's Encrypt certs (DNS-01 / Cloudflare) on the four infra UIs (`teejhost1`/`teejhost2`/`pbs`/`edge`), auto-renewing (see `docs/runbooks/tls-letsencrypt-dns01.md`). Reverse proxy + `*.teejlab.dev` wildcard now live on docker1 (Traefik) for auto-TLS on services; NAS still to be fronted via it; switch is HTTP-only
 - [x] Tailscale on OPNsense advertising lab subnets (remote access) — subnet router advertising `10.0.10.0/24` (now also VLANs 20 and 30), reachable web + SSH from off-network, + split-DNS so `*.teejlab.dev` resolves on the laptop
 - [x] Network documentation updated (`docs/architecture/network-architecture.md`)
 
@@ -106,7 +106,8 @@ then reproduce via IaC:
 
 - [x] `docker1` VM provisioned by hand on VLAN 20 SERVERS (`10.0.20.2`) — precursor to the IaC deploy
 - [x] VM baseline standard established + applied to `docker1` — three pillars (Communicate / Report metrics / Administer securely): key-only SSH + sshd hardening, `unattended-upgrades`, `qemu-guest-agent`, `prometheus-node-exporter`, cross-VLAN internal DNS. Spec for the future Ansible `base` role — see `docs/runbooks/vm-baseline-setup.md`
-- [ ] Docker Engine + first workload on `docker1` (hand-built role — Traefik reverse proxy for `*.teejlab.dev` auto-TLS; `docs/runbooks/docker-host-setup.md`)
+- [x] Docker Engine + first workload on `docker1` (hand-built role — Traefik reverse proxy for `*.teejlab.dev` auto-TLS; `docs/runbooks/docker-host-setup.md`). Done 2026-10-16: Docker 29 from the official repo, Traefik v3 with a production `*.teejlab.dev` wildcard (DNS-01, dedicated scoped Cloudflare token as a Compose secret), `whoami.teejlab.dev` serving over valid HTTPS
+- [ ] Put existing services behind Traefik: nginx test site, then the NAS UI (needs a shared external Docker network for other Compose projects)
 - [ ] Docker VM deployed via IaC (codify the hand-built build)
 - [ ] First service containerized: e.g., Portainer, reverse proxy, monitoring
 - [ ] Docker registry (local or Docker Hub)

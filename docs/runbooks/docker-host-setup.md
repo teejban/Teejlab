@@ -82,23 +82,77 @@ Learning steps before Traefik, each building on the last:
    moves to `docker compose up -d`). `docker compose config` validates the file first, like
    `terraform validate`. `down` then `up -d` recreates it identically in seconds.
 
-## 3. Internal DNS record  `[ ]`  *(OPNsense-side, not on the VM)*
+## 3. Internal DNS record  `[x]`  *(OPNsense-side, not on the VM)*
 
-Add an Unbound host override **`docker1.teejlab.dev → 10.0.20.2`** so the host is addressable by
-name, consistent with the internal-DNS scheme. This is a hypervisor/router-side step, separate
-from the VM.
+Unbound host overrides **`docker1.teejlab.dev → 10.0.20.2`** and **`whoami.teejlab.dev →
+10.0.20.2`** (the Traefik test service). Each proxied service gets **its own override pointing at
+docker1**, because Traefik routes by requested name, so every name lands on the same IP.
 
-## 4. First workload — reverse proxy (Traefik)  `[ ]`
+Gotcha: the overrides were saved but returned NXDOMAIN until **Apply** was clicked. It's a small
+button at the bottom of the Overrides page, the same "saved isn't live" pattern as the switch and
+OMV. Deliberately **no catch-all `*.teejlab.dev` override**: it would capture typos and any name
+meant to resolve publicly. Per-service records for now; automate them later via the OPNsense
+API (Terraform/Ansible), or use a dedicated wildcard subdomain such as `*.apps.teejlab.dev`.
 
-The first real service, and the keystone of the lab's **automatic-TLS** plan
+## 4. First workload — reverse proxy (Traefik)  `[x]`  *(2026-10-16)*
+
+The keystone of the lab's **automatic-TLS** plan
 ([ADR-0009](../decisions/0009-automatic-tls-strategy.md)): a reverse proxy holding a
 `*.teejlab.dev` wildcard cert (Let's Encrypt DNS-01 via Cloudflare), with **Traefik** chosen for
-label-based auto-discovery — new containers get TLS by adding labels, no per-service cert work.
+label-based auto-discovery. New containers get TLS by adding labels, with no per-service cert
+work.
 
-Downstream of this (later, own steps):
-- Internal wildcard DNS `*.teejlab.dev → 10.0.20.2` in Unbound so proxied hostnames resolve.
-- Front the NAS UI (no native ACME) through the proxy.
+**Layout** (`~/traefik/`): `compose.yaml` (Traefik + `traefik/whoami` test service),
+`secrets/cf_dns_api_token` (`700` dir, `600` file, not in git), `letsencrypt/acme.json`
+(created by Traefik, root-owned, `600`).
+
+**Cloudflare token:** a dedicated token, `traefik-docker1-dns01`, scoped to **`teejlab.dev` only**,
+with **DNS Write + Zone Read** (Traefik looks the zone up, then edits records), no expiry and no IP
+filter (the residential IP changes). Kept in Bitwarden as the master copy. On docker1 it was
+written with `read -rsp` so it never appears on screen or in history, and Traefik reads it as a
+Compose secret via `CF_DNS_API_TOKEN_FILE=/run/secrets/...`, not an environment variable (which
+`docker inspect` would show).
+
+Verifying the token tripped me up: Cloudflare's new token UI creates **account-owned** tokens,
+and `/user/tokens/verify` rejects those with `Invalid API Token` even when the token is fine. Test
+what Traefik actually needs instead:
+
+```
+curl -s -H "Authorization: Bearer $(cat ~/traefik/secrets/cf_dns_api_token)" \
+  "https://api.cloudflare.com/client/v4/zones?name=teejlab.dev"   # → "success":true
+```
+
+**Key Traefik settings and why:**
+- `providers.docker.exposedbydefault=false`: only containers labelled `traefik.enable=true`
+  get routed. Nothing is exposed by accident.
+- `web` (:80) redirects to `websecure` (:443). Only Traefik publishes ports; backends have none.
+- `dnschallenge.resolvers=1.1.1.1:53,1.0.0.1:53`: check challenge propagation against **public**
+  DNS, because internal Unbound answers `teejlab.dev` itself (split-horizon).
+- A wildcard cert requested once on the whoami router (`tls.domains[0].main=teejlab.dev`,
+  `sans=*.teejlab.dev`) and shared by every service.
+- `docker.sock` mounted `:ro`. Socket access is effectively root on the host, so it's limited to
+  Traefik.
+
+**Staging first, then production.** Started against the Let's Encrypt **staging** CA (no rate
+limits). Result:
+
+```
+Issuer : CN=(STAGING) Ersatz Emmer YR2, O=Let's Encrypt, C=US
+Names  : DNS Name=*.teejlab.dev, DNS Name=teejlab.dev
+```
+
+A browser won't accept a staging cert on `.dev` (HSTS, so there's no click-through), so test with
+`curl -k` or a TLS check instead. whoami's reply shows the proxying: `IP: 172.19.0.3` (whoami on
+the Docker network) and `RemoteAddr: 172.19.0.2` (Traefik). Then: delete the `caserver` line,
+`sudo rm letsencrypt/acme.json` (otherwise the staging cert is kept), `docker compose up -d`.
+Production cert: issuer `YR1`, valid 2026-10-16 → 2027-01-14. `https://whoami.teejlab.dev`
+loads with a valid padlock.
+
+Downstream of this (own steps):
+- Put existing services behind it: the nginx test site, then the NAS UI (no native ACME).
+- A shared external Docker network so services in *other* Compose projects are reachable by Traefik.
 - Firewall allows for client → proxy once the hardening pass lands.
+- Pin the image to an exact version (`traefik:v3.x.y`) instead of the floating `v3` tag.
 
 ## 5. Firewall — the UFW/Docker caveat  `[ ]`
 
