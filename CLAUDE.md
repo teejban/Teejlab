@@ -13,6 +13,7 @@ Project handle: `teejlab` (also the owned domain `teejlab.dev`).
 1. Land a DevOps job. The repo and the homelab itself are portfolio material.
 2. Learn the full DevOps stack hands-on: IaC, config management, containers, orchestration, CI/CD, GitOps, observability.
 3. Build something real and useful for myself in the process — not just demo workloads.
+4. **Portfolio capstone, the launch platform**: one site (`teejlab.dev`) where recruiters/hiring managers can **launch** my resume site *and* the MSP stack, watch each build live (pipeline steps, resources, logs, timings), then use what they launched and its dashboard. One pipeline pattern, two targets; every phase is a building block for it. Cloud: **AWS first** (I'm ex-AWS and want to keep growing there), **Azure added later** for multi-cloud. Open decision: whether visitor-launched MSP stacks run in AWS (leaning) or the lab's DMZ. Public launches need hard guardrails (auto-teardown, concurrency caps, bot protection, budget ceiling, isolation). See `docs/roadmap.md` Phase 7.
 
 ## Hardware inventory
 
@@ -98,10 +99,11 @@ Rule of thumb: use the `teejlab-` prefix **only where there is no `teejlab.dev` 
 - All hosts migrated to MGMT VLAN 10 with flat IPs removed: teejhost1 (`10.0.10.2`), teejhost2 (`10.0.10.3`), nas (`10.0.10.4`)
 - Operating docs: cold-start order, health check and every device's break-glass path in `docs/runbooks/lab-cold-start.md`; troubleshooting cheat sheet in `docs/runbooks/linux-troubleshooting.md`
 - Corosync on a single VLAN 10 link (flat `ring0` removed); QDevice on `10.0.10.4`; CIFS storage repointed to `10.0.10.4`
-- Tailscale on OPNsense as a subnet router advertising `10.0.10.0/24` — remote web + SSH access to the lab from anywhere, no port forwarding. Decouples management from the flat net.
+- Tailscale on OPNsense as a subnet router advertising `10.0.10.0/24`, `10.0.20.0/24` and `10.0.30.0/24` (MGMT, SERVERS, LAB) — remote web + SSH access to the lab from anywhere, no port forwarding. Decouples management from the flat net.
+- docker1 (`10.0.20.2`): Docker Engine 29 + Compose plugin from Docker's official repo; nginx test site (`~/web`) and Traefik + whoami (`~/traefik`) running via Compose. SSH from the PC via the `ssh docker1` alias (key-only). See `docs/runbooks/docker-host-setup.md`.
 - **Flat-net migration complete** — nothing in the lab uses VLAN 1. VLAN 1 is intentionally kept on the switch as a break-glass recovery network (the Easy Smart switch's own management IP lives there); not deprecated by design.
 - Internal split-horizon DNS via OPNsense Unbound: `edge`/`teejhost1`/`teejhost2`/`nas`/`pbs` under `teejlab.dev`, every host pointed at `10.0.10.1`. OPNsense OS hostname is `opnsense` (kept distinct from the `edge` management alias, since a firewall self-registers to all interfaces). See [docs/runbooks/internal-dns.md].
-- TLS on the four infra UIs via Let's Encrypt DNS-01 (Cloudflare) — real auto-renewing certs (Proxmox ×2 + PBS native ACME; OPNsense `os-acme-client`). See [docs/runbooks/tls-letsencrypt-dns01.md] and [ADR-0009](docs/decisions/0009-automatic-tls-strategy.md). Pending: reverse proxy + `*.teejlab.dev` wildcard for auto-TLS on services (NAS fronted there; switch is HTTP-only).
+- TLS on the four infra UIs via Let's Encrypt DNS-01 (Cloudflare) — real auto-renewing certs (Proxmox ×2 + PBS native ACME; OPNsense `os-acme-client`). See [docs/runbooks/tls-letsencrypt-dns01.md] and [ADR-0009](docs/decisions/0009-automatic-tls-strategy.md). **Reverse proxy live:** Traefik v3 on docker1 holds a production `*.teejlab.dev` wildcard (DNS-01 with a dedicated, zone-scoped Cloudflare token read as a Compose secret); services get HTTPS via labels plus an Unbound override pointing at `10.0.20.2`. NAS not yet fronted; switch is HTTP-only.
 
 ### Planned / in progress (DevOps focus)
 - IaC: Terraform + `bpg/proxmox` provider for VM provisioning
@@ -118,7 +120,7 @@ Rule of thumb: use the `teejlab-` prefix **only where there is no `teejlab.dev` 
 - Zammad or GLPI (ticketing)
 - BookStack (documentation / runbooks)
 - Uptime Kuma (simple monitoring)
-- A public-facing portfolio site behind Cloudflare Tunnel, ideally with an interactive demo (ephemeral container spawned per visitor) — long-term goal
+- The portfolio launch platform (goal 4 above), with visitor-launchable resume + MSP stack. The capstone, Phase 7 of the roadmap.
 
 ## Repo structure
 

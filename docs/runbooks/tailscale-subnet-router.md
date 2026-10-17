@@ -47,6 +47,11 @@ a login URL.)
 **VPN → Tailscale → Settings → Advertised routes** = `10.0.10.0/24` (add more lab subnets
 later as needed). Apply.
 
+> **Current state (verified 2026-10-15 via `tailscale status --json`):** OPNsense advertises and
+> has approved **`10.0.10.0/24`, `10.0.20.0/24` and `10.0.30.0/24`** (MGMT, SERVERS, LAB), so
+> docker1 (`10.0.20.2`) is reachable from the PC directly. VLANs 40/50 are not advertised. Keep
+> DMZ (50) off the tailnet on purpose.
+
 ### 4. Approve the route (mandatory — it's inactive until you do)
 
 Tailscale admin console → **Machines** → OPNsense → **Edit route settings** → enable
