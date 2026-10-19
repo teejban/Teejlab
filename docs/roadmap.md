@@ -107,7 +107,9 @@ then reproduce via IaC:
 - [x] `docker1` VM provisioned by hand on VLAN 20 SERVERS (`10.0.20.2`) — precursor to the IaC deploy
 - [x] VM baseline standard established + applied to `docker1` — three pillars (Communicate / Report metrics / Administer securely): key-only SSH + sshd hardening, `unattended-upgrades`, `qemu-guest-agent`, `prometheus-node-exporter`, cross-VLAN internal DNS. Spec for the future Ansible `base` role — see `docs/runbooks/vm-baseline-setup.md`
 - [x] Docker Engine + first workload on `docker1` (hand-built role — Traefik reverse proxy for `*.teejlab.dev` auto-TLS; `docs/runbooks/docker-host-setup.md`). Done 2026-10-16: Docker 29 from the official repo, Traefik v3 with a production `*.teejlab.dev` wildcard (DNS-01, dedicated scoped Cloudflare token as a Compose secret), `whoami.teejlab.dev` serving over valid HTTPS
-- [ ] Put existing services behind Traefik: nginx test site, then the NAS UI (needs a shared external Docker network for other Compose projects)
+- [x] Shared `proxy` Docker network + the nginx test site behind Traefik (`https://site.teejlab.dev`, no published ports). The pattern every service now follows.
+- [ ] NAS UI behind Traefik (not a container, so via Traefik's file provider): valid HTTPS for `nas.teejlab.dev`
+- [ ] Move the docker1 Compose projects (`traefik`, `web`) into the repo under `infra/docker/`, with secrets and `acme.json` git-ignored
 - [ ] Docker VM deployed via IaC (codify the hand-built build)
 - [ ] First service containerized: e.g., Portainer, reverse proxy, monitoring
 - [ ] Docker registry (local or Docker Hub)

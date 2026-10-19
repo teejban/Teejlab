@@ -149,10 +149,64 @@ Production cert: issuer `YR1`, valid 2026-10-16 → 2027-01-14. `https://whoami.
 loads with a valid padlock.
 
 Downstream of this (own steps):
-- Put existing services behind it: the nginx test site, then the NAS UI (no native ACME).
-- A shared external Docker network so services in *other* Compose projects are reachable by Traefik.
-- Firewall allows for client → proxy once the hardening pass lands.
-- Pin the image to an exact version (`traefik:v3.x.y`) instead of the floating `v3` tag.
+- [x] A shared external Docker network so services in *other* Compose projects are reachable by Traefik (4b)
+- [x] Put the nginx test site behind it (4b)
+- [ ] The NAS UI (no native ACME). It isn't a container, so it needs Traefik's **file provider**.
+- [ ] Firewall allows for client → proxy once the hardening pass lands.
+- [ ] Pin the image to an exact version (`traefik:v3.x.y`) instead of the floating `v3` tag.
+
+## 4b. Shared `proxy` network: the nginx site behind Traefik  `[x]`  *(2026-10-19)*
+
+Each Compose project gets its own private bridge network (`traefik_default`, `web_default`), so
+Traefik couldn't see the nginx container in the separate `~/web` project. The fix is one network
+that both projects join, created **by hand, outside any Compose file**. If one project owned it,
+`docker compose down` there would try to delete it from under the others.
+
+```
+docker network create proxy
+```
+
+**Traefik** (`~/traefik/compose.yaml`) joins it and keeps its own network, because once a
+service lists `networks:` it's on *only* those, and it still needs `default` to reach whoami:
+
+```yaml
+    networks:
+      - proxy
+      - default
+# …and as the LAST top-level block of the file:
+networks:
+  proxy:
+    external: true          # exists already; use it, never create/delete it
+```
+
+**nginx** (`~/web/compose.yaml`): `ports:` removed, so 8080 is closed and Traefik is the only way
+in. It gets the same labels as whoami under a new router name, and no `tls.domains`, because the
+wildcard cert already exists and is reused:
+
+```yaml
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.site.rule=Host(`site.teejlab.dev`)
+      - traefik.http.routers.site.entrypoints=websecure
+      - traefik.http.routers.site.tls.certresolver=cf
+    networks:
+      - proxy
+```
+
+Plus an Unbound override `site.teejlab.dev → 10.0.20.2` (and **Apply**). The router is named
+`site`, not `web`, so it isn't confused with Traefik's `web` entrypoint. Result:
+
+```
+web: Up  ports=[80/tcp]           ← container port only, nothing published on the host
+networks: proxy
+site.teejlab.dev DNS -> 10.0.20.2
+https://site.teejlab.dev -> <h1>Hello from teejlab</h1>…
+http://10.0.20.2:8080 -> connection refused
+```
+
+That's the pattern every service now follows: **container on `proxy` + four labels + one DNS
+name = HTTPS with no published ports.** It works like an ALB with host-based routing to targets
+in a private subnet: one entry point (`10.0.20.2:443`), and backends only reachable through it.
 
 ## 5. Firewall — the UFW/Docker caveat  `[ ]`
 
@@ -179,3 +233,16 @@ role has to reproduce.)*
   returns 403. Relative paths (`./site`) keep the project portable.
 - **`sudo echo … > /etc/file` fails.** The redirect runs in your unprivileged shell, so use
   `| sudo tee`.
+- **A top-level YAML key ends the section above it.** The `networks: proxy: external: true` block
+  pasted *between* the two services made Compose read `whoami` as a network:
+  `networks.whoami additional properties 'image', 'restart', 'container_name' not allowed`.
+  Top-level blocks (`services:`, `networks:`, `secrets:`) sit at zero indent; put the external
+  network block at the very end.
+- **Editing the file doesn't change a running container.** After adding `networks:`, Traefik
+  still showed only `traefik_default` (and "Up 2 days") until `docker compose up -d` recreated it.
+- **`docker compose config` doesn't validate labels.** `rule-Host('site.teejlab.dev')` (dash
+  instead of `=`, quotes instead of backticks) passed validation, because to Compose a label is
+  just a string. Traefik is what parses it, so label mistakes only show up in Traefik's
+  behaviour and logs. Traefik rules need backticks: ``Host(`name`)``.
+- **The DNS name and the `Host()` rule must match.** DNS gets the client to docker1; the label
+  tells Traefik which container the name belongs to. Missing either half means no route.
