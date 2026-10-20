@@ -109,7 +109,8 @@ then reproduce via IaC:
 - [x] Docker Engine + first workload on `docker1` (hand-built role — Traefik reverse proxy for `*.teejlab.dev` auto-TLS; `docs/runbooks/docker-host-setup.md`). Done 2026-10-16: Docker 29 from the official repo, Traefik v3 with a production `*.teejlab.dev` wildcard (DNS-01, dedicated scoped Cloudflare token as a Compose secret), `whoami.teejlab.dev` serving over valid HTTPS
 - [x] Shared `proxy` Docker network + the nginx test site behind Traefik (`https://site.teejlab.dev`, no published ports). The pattern every service now follows.
 - [ ] NAS UI behind Traefik (not a container, so via Traefik's file provider): valid HTTPS for `nas.teejlab.dev`
-- [ ] Move the docker1 Compose projects (`traefik`, `web`) into the repo under `infra/docker/`, with secrets and `acme.json` git-ignored
+- [x] Move the docker1 Compose projects (`traefik`, `web`) into the repo under `infra/docker/`, with secrets, `acme.json` and `.env` git-ignored (the ACME email moved to `.env`; `.env.example` committed). Copied by file name, so secrets never left docker1.
+- [ ] Run docker1 from a git checkout: clone the repo on docker1, place secrets/`.env` in the git-ignored paths, deploy with `git pull && docker compose up -d`. Changes flow one way: PC → PR → GitHub → docker1 (read-only), the manual version of what CI does later.
 - [ ] Docker VM deployed via IaC (codify the hand-built build)
 - [ ] First service containerized: e.g., Portainer, reverse proxy, monitoring
 - [ ] Docker registry (local or Docker Hub)

@@ -1,0 +1,17 @@
+services:
+  web:
+    image: nginx
+    container_name: web
+    volumes: 
+      - ./site:/usr/share/nginx/html:ro
+    restart: unless-stopped
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.site.rule=Host(`site.teejlab.dev`)
+      - traefik.http.routers.site.entrypoints=websecure
+      - traefik.http.routers.site.tls.certresolver=cf
+    networks:
+      - proxy
+networks:
+  proxy:
+    external: true
